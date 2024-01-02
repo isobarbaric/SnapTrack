@@ -1,4 +1,5 @@
 import boto3
+from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 import json
 from openai import OpenAI
@@ -9,6 +10,11 @@ load_dotenv()
 
 # initializing OpenAI client
 openai_client = OpenAI(api_key = os.getenv("API_KEY"))
+
+class ReceiptParserError(Exception):
+    def __init__(self, message):
+        self.message = "Error: " + message 
+        super().__init__(self.message)
 
 class ReceiptParser:
 
@@ -23,14 +29,18 @@ class ReceiptParser:
         :return: a AWS Rekognition result
         :rtype: JSON dictionary
         """
-        session = boto3.Session(profile_name='default')
-        aws_client = session.client('rekognition')
+        try:
+            session = boto3.Session(profile_name='default')
+            aws_client = session.client('rekognition')
 
-        with open(filepath, 'rb') as image_file:
-            image_data = image_file.read()
+            with open(filepath, 'rb') as image_file:
+                image_data = image_file.read()
 
-        # call Amazon Rekognition API
-        response = aws_client.detect_text(Image={'Bytes': image_data})
+            # call Amazon Rekognition API
+            response = aws_client.detect_text(Image={'Bytes': image_data})
+
+        except ClientError as e:
+            response = {'Error': e}
 
         return response
 
@@ -67,12 +77,16 @@ class ReceiptParser:
             model="gpt-3.5-turbo"
         )
 
-        print(gpt_response)
+        # print(gpt_response)
 
         message = gpt_response.choices[0].message
         return json.loads(message.content)
 
     def parse(self, filepath):
         rekognition_response = self.get_rekognition_response(filepath)
+
+        if 'Error' in rekognition_response:
+            raise ReceiptParserError(rekognition_response['Error'])
+
         return self.parse_rekognition_response(rekognition_response)
     
