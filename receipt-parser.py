@@ -3,14 +3,11 @@ import json
 from openai import OpenAI
 import os
 
-# loading API
+# loading api key
 load_dotenv()
 
 # initializing OpenAI client
-client = OpenAI(
-    # This is the default and can be omitted
-    api_key= os.getenv("API_KEY"),
-)
+client = OpenAI(api_key = os.getenv("API_KEY"))
 
 # class ReceiptParser:
 #     pass
