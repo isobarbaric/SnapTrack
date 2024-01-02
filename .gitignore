@@ -1,6 +1,5 @@
 .env
 __pycache__/
 .DS_Store
-receipt1.jpg
-receipt2.jpg
+receipts/
 idea.md

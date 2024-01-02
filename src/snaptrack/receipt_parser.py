@@ -15,7 +15,7 @@ class ReceiptParser:
     def __init__(self):
         pass
 
-    def get_rekognition_response(self, filename):
+    def get_rekognition_response(self, filepath):
         """Gets AWS Rekognition response for a specified image
 
         :param filename: name of image file
@@ -26,7 +26,7 @@ class ReceiptParser:
         session = boto3.Session(profile_name='default')
         aws_client = session.client('rekognition')
 
-        with open(filename, 'rb') as image_file:
+        with open(filepath, 'rb') as image_file:
             image_data = image_file.read()
 
         # call Amazon Rekognition API
@@ -72,6 +72,7 @@ class ReceiptParser:
         message = gpt_response.choices[0].message
         return json.loads(message.content)
 
-    def parse(self, filename):
-        rekognition_response = self.get_rekognition_response(filename)
+    def parse(self, filepath):
+        rekognition_response = self.get_rekognition_response(filepath)
         return self.parse_rekognition_response(rekognition_response)
+    
