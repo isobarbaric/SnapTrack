@@ -1,53 +1,37 @@
-from datetime import datetime, timezone
-from dotenv import load_dotenv
+from datetime import datetime
 from notion_client import Client
-import os
 
-# load environment variables
-load_dotenv()
+class NotionDB:
 
-notion_token = os.environ["NOTION_TOKEN"]
-database_id = os.environ["NOTION_DATABASE_ID"]
+    def __init__(self, notion_token, database_id):
+        self.notion = Client(auth = notion_token)
+        self.database_id = database_id
 
-def main():
-    notion = Client(auth = notion_token)
+    def print(self):
+        pages = self.notion.databases.query(self.database_id)
+        for page in pages['results']:
+            page_content = page['properties']
 
-    add_row(notion, datetime.now(timezone.utc), "Walmart", "Food", 362.58)
+            date = page_content['Date']['date']['start']
+            place = page_content['Place']['title'][0]['text']['content']
+            what = page_content['What']['multi_select'][0]['name']
+            amount = page_content['Amount']['number']
+            print(date, place, what, amount)
 
-    # get pages from database
-    pages = notion.databases.query(database_id)
+    def get_columns(self):
+        pages = self.notion.databases.query(self.database_id)
+        cols = pages['results'][0]['properties'].keys()
+        return list(cols)
 
-    for page in pages['results']:
-        properties = page['properties']
-
-        date = properties['Date']['date']['start']
-        place = properties['Place']['title'][0]['text']['content']
-        what = properties['What']['multi_select'][0]['name']
-        amount = properties['Amount']['number']
-
-        print(date, place, what, amount)
-
-def get_categories(client):
-    pages = client.databases.query(database_id)
-    categories = []
-
-    for page in pages['results']:
-        properties = page['properties']
-        category = properties['What']['multi_select'][0]['name']
-        categories.append(category)
-
-    return categories
-
-def add_row(client, date: datetime, place, what, amount):
-    client.pages.create(
-        parent = {'database_id': database_id},
-        properties = {
-            'Date': {'date': {'start': str(date).split()[0]}},
-            'Place': {'title':  [{'text': {'content': place}}]},
-            'What': {'multi_select': [{'name': what}]},
-            'Amount': {'number': amount}
-        }   
-    )
-
-if __name__ == '__main__':
-    main()
+    def add_row(self, date: datetime, place, what, amount):
+        # TODO: add relevant notion icon
+        
+        self.notion.pages.create(
+            parent = {'database_id': self.database_id},
+            properties = {
+                'Date': {'date': {'start': str(date).split()[0]}},
+                'Place': {'title':  [{'text': {'content': place}}]},
+                'What': {'multi_select': [{'name': what}]},
+                'Amount': {'number': amount}
+            }   
+        )
