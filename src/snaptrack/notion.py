@@ -1,46 +1,53 @@
 from datetime import datetime, timezone
 from dotenv import load_dotenv
-import json
-import requests
+from notion_client import Client
 import os
 
+# load environment variables
 load_dotenv()
 
-headers = {
-    'Authorization': 'Bearer ' + os.getenv("NOTION_SECRET"),
-    'Content-Type': 'application/json',
-    'Notion-Version': '2022-06-28'
-}
+notion_token = os.environ["NOTION_TOKEN"]
+database_id = os.environ["NOTION_DATABASE_ID"]
 
-# get all pages
-def get_pages():
-    url = f'https://api.notion.com/v1/databases/{os.getenv("NOTION_DATABASE_ID")}/query'
+def main():
+    notion = Client(auth = notion_token)
 
-    # get all pages possible
-    payload = {'page_size': 100}
+    add_row(notion, datetime.now(timezone.utc), "Walmart", "Food", 362.58)
 
-    response = requests.post(url, json=payload, headers=headers)
-    data = response.json()
-    results = data['results']
+    # get pages from database
+    pages = notion.databases.query(database_id)
 
-    with open('../../test/notion-response.json', 'w') as db:
-        json.dump(data, db, indent=4)
+    for page in pages['results']:
+        properties = page['properties']
 
-    results = data['results']
-    return results
+        date = properties['Date']['date']['start']
+        place = properties['Place']['title'][0]['text']['content']
+        what = properties['What']['multi_select'][0]['name']
+        amount = properties['Amount']['number']
 
-pages = get_pages()
+        print(date, place, what, amount)
 
-# read entries from database
-for page in pages:
-    page_id = page['id']
-    props = page['properties']
+def get_categories(client):
+    pages = client.databases.query(database_id)
+    categories = []
 
-    date = props['Date']['date']['start']
-    date = datetime.fromisoformat(date)
+    for page in pages['results']:
+        properties = page['properties']
+        category = properties['What']['multi_select'][0]['name']
+        categories.append(category)
 
-    place = props['Place']['title'][0]['text']['content']
-    what = props['What']['multi_select'][0]['name']
-    amount = props['Amount']['number']
+    return categories
 
-    print(date, place, what, amount)
+def add_row(client, date: datetime, place, what, amount):
+    client.pages.create(
+        parent = {'database_id': database_id},
+        properties = {
+            'Date': {'date': {'start': str(date).split()[0]}},
+            'Place': {'title':  [{'text': {'content': place}}]},
+            'What': {'multi_select': [{'name': what}]},
+            'Amount': {'number': amount}
+        }   
+    )
+
+if __name__ == '__main__':
+    main()
