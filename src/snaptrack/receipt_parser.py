@@ -9,7 +9,7 @@ import os
 load_dotenv()
 
 # initializing OpenAI client
-openai_client = OpenAI(api_key = os.getenv("API_KEY"))
+openai_client = OpenAI(api_key = os.getenv("OPENAI_API_KEY"))
 
 class ReceiptParserError(Exception):
     def __init__(self, message):
