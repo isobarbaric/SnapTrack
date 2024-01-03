@@ -38,7 +38,7 @@ class NotionDB:
         properties = self.structure['properties']
 
         for key in properties:
-            column_name = properties[key]['name']
+            column_name = properties[key]['name'].title()
 
             if properties[key]['type'] == 'select':
                 self.select_options[properties[key]['name']] = [option['name'] for option in self.structure['properties'][column_name]['select']['options']]
@@ -52,12 +52,18 @@ class NotionDB:
         return columns
 
     def add_row(self, row_content):
+        print(f"Row: {row_content}")
+
         # build properties dictionary
         properties = {}
-        
+
         for column in self.columns:
             column_name = column['name']
             column_type = column['type']
+
+            # in case GPT doesn't include this element
+            if column_name not in row_content:
+                row_content[column_name] = ''
 
             # print(column_type)
             # getting value from row_content, and getting the right capitalization
@@ -74,12 +80,14 @@ class NotionDB:
             elif column_type == 'text':
                 properties[column_name] = {'text': {'content': str(value)}}
             elif column_type == 'number':
-                number = str(value)                
-                unwanted_entities = [',','$','€','£','¥','A$','CA$','CHF','CN¥','kr','NZ$']
-
-                for entity in unwanted_entities:
-                    number = number.replace(entity, '')
-                properties[column_name] = {'number': float(number)}
+                number = str(value)
+                if number != '':
+                    unwanted_entities = [',','$','€','£','¥','A$','CA$','CHF','CN¥','kr','NZ$']
+                    for entity in unwanted_entities:
+                        number = number.replace(entity, '')
+                    properties[column_name] = {'number': float(number)}
+                else:
+                    properties[column_name] = {'number': None}
             elif column_type == 'select':
                 if value == '':
                     continue

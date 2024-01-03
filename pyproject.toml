@@ -12,6 +12,7 @@ openai = "^1.6.1"
 python-dotenv = "^1.0.0"
 boto3 = "^1.34.11"
 notion-client = "^2.2.1"
+spacy = "^3.7.2"
 
 
 [tool.poetry.group.dev.dependencies]

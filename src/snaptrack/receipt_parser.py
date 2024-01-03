@@ -59,7 +59,7 @@ class ReceiptParser:
         :rtype: JSON dictionary
         """
 
-        prompt = "This list is text extracted from a paper receipt: "
+        prompt = f"Train: You are an expert in exploratory data extraction. You have award-winning proficiency in identifying and collecting relevant information from the text extracted from paper receipts. Based on your extensive experience and expertise, analyze a receipt's text list. There are labels that represent columns in a Notion database. Scrutinize all extracted text for each entry in the receipt and assign them to appropriate labels. Some of the columns of the database are of type 'Select' and type 'Multi-select' and hence have associated categories. For such columns, please do not mix categories defined within one label with another. For a particular product, assign a label an empty string if you are unsure what value should be assigned, but make sure to ALWAYS include every label for a particular entry. Please include dates in %Y/%m/%d format excluding time, and correct the content in a title word format. Your output should ONLY be a list of JSON objects and nothing else. This list is text extracted from a paper receipt: "
 
         # clean up response to only include text content
         aws_response = [elem['DetectedText'] for elem in aws_response['TextDetections']]
@@ -76,26 +76,21 @@ class ReceiptParser:
         for column in categories:
             criteria += f"\n- {column['name']} "
             if column['type'] == 'select':
-                criteria += "(this is a selection column of type 'select' and you can choose upto one of the following options; you can keep your selection empty in case no suitable category is available:  " + ''.join([f'{option}, ' for option in select_options[column['name']]][:-1]) 
+                criteria += "(this is a column of type 'Select' and you can choose upto one of the following options; you can keep your selection empty in case no suitable category is available:  " + ''.join([f'{option}, ' for option in select_options[column['name']]][:-1]) 
                 
                 if len(select_options[column['name']]) > 1:
                     criteria += select_options[column['name']][-1] + ')'
                 else:
                     criteria += ')'
             elif column['type'] == 'multi_select':
-                criteria += "(this is a selection column of type 'multi_select' and you can choose multiple of the following categories (return your selection as a list); you can keep your selection empty in case no suitable categories are available: " + ''.join([f'{option}, ' for option in select_options[column['name']]][:-1])
+                criteria += "(this is a column of type 'Multi-select' and you can choose multiple of the following categories (return your selection as a list); you can keep your selection empty in case no suitable categories are available: " + ''.join([f'{option}, ' for option in select_options[column['name']]][:-1])
 
                 if len(select_options[column['name']]) > 1:
                     criteria += select_options[column['name']][-1] + ')'
                 else:
                     criteria += ')'
         
-        prompt += receipt_list + f"\nReturn in JSON format the following information about each of the products on the receipt: {criteria}\nDo this for every single product on the receipt, and the format should be a list of such JSON objects (ensure the keys have the right spelling and case). Try your best in cases where context is unclear and return a blank string for any unknown fields. The selection columns are ['Bonus', 'What']. DON'T mix categories from one selection column (type 'select' or 'multi_select' column) with another column. Instead, only select category value(s) for a  selection column from its provided list of categories. Make sure any text values you return as part of a JSON object is in the proper case (e.g. 'Walmart' instead of 'WALMART' or 'wALMarT'). Additionally, make sure all dates are formatted like this: %Y/%m/%d and don't include the time in a date.  Your response to this message should only be a list of JSON objects and nothing else."
-
-        # order in sentence
-        # add selections columns manually to prompt in place of ['Bonus', 'What']
-
-        # prev = "DON'T mix up categories available for separate select and multi_select columns - make sure such selections only come from their own respective lists that are provided. Also don't create your own categories for select and multi_select columns, only work with categories that you are given as options."
+        prompt += receipt_list + f"\nYour labels are {criteria}"
 
         print(prompt)
 
@@ -107,7 +102,7 @@ class ReceiptParser:
                     "content": prompt,
                 }
             ],
-            model="gpt-3.5-turbo"
+            model="gpt-4"
         )
 
         message = gpt_response.choices[0].message
@@ -124,12 +119,19 @@ class ReceiptParser:
         rekognition_response = self.get_rekognition_response(filepath)
         if 'Error' in rekognition_response:
             # raise ReceiptParserError(rekognition_response['Error'])
+            # separate issue, change description
+
+            # print(parsed_response['Error'])
             raise ReceiptParserError("Invalid AWS response", include_name=False)
 
         parsed_response = self.parse_rekognition_response(rekognition_response, categories, select_options)
         if 'Error' in parsed_response:
             # raise ReceiptParserError(parsed_response['Error'])
             # str: Expecting value: line 1 column 1 (char 0)
-            raise ReceiptParserError("GPT unable to parse AWS response", include_name=False)
+            # separate issue, change description
+
+            # print(parsed_response['Error'])
+            # "GPT unable to parse AWS response"
+            raise ReceiptParserError("invalid GPT response", include_name=False)
 
         return parsed_response
