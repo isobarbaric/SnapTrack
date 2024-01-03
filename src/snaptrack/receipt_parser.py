@@ -59,7 +59,8 @@ class ReceiptParser:
         :rtype: JSON dictionary
         """
 
-        prompt = f"Train: You are an expert in exploratory data extraction. You have award-winning proficiency in identifying and collecting relevant information from the text extracted from paper receipts. Based on your extensive experience and expertise, analyze a receipt's text list. There are labels that represent columns in a Notion database. Scrutinize all extracted text for each entry in the receipt and assign them to appropriate labels. Some of the columns of the database are of type 'Select' and type 'Multi-select' and hence have associated categories. For such columns, please do not mix categories defined within one label with another. For a particular product, assign a label an empty string if you are unsure what value should be assigned, but make sure to ALWAYS include every label for a particular entry. Please include dates in %Y/%m/%d format excluding time, and correct the content in a title word format. Your output should ONLY be a list of JSON objects and nothing else. This list is text extracted from a paper receipt: "
+        # created a detailed prompt for task
+        prompt = "Train: You are an expert in exploratory data extraction. You have award-winning proficiency in identifying and collecting relevant information from the text extracted from paper receipts. Based on your extensive experience and expertise, analyze a receipt's text list. There are labels that represent columns in a Notion database. Scrutinize all extracted text for each entry in the receipt and assign them to appropriate labels (don't create your own labels, only create keys for given labels). Some of the columns of the database are of type 'Select' and type 'Multi-select' and hence have associated categories. For such columns, please do not mix categories defined within one label with another. For a particular product, assign a label an empty string if you are unsure what value should be assigned, but make sure to ALWAYS include every label for a particular entry. Please include dates in %Y/%m/%d format excluding time, and correct the content in a title word format. Your output should ONLY be a list of JSON objects and nothing else. This list is text extracted from a paper receipt: "
 
         # clean up response to only include text content
         aws_response = [elem['DetectedText'] for elem in aws_response['TextDetections']]
@@ -92,7 +93,7 @@ class ReceiptParser:
         
         prompt += receipt_list + f"\nYour labels are {criteria}"
 
-        print(prompt)
+        # print(prompt)
 
         # passing prompt to GPT-3.5 and gettings its response
         gpt_response = openai_client.chat.completions.create(
@@ -102,17 +103,18 @@ class ReceiptParser:
                     "content": prompt,
                 }
             ],
-            model="gpt-4"
+            model="gpt-3.5-turbo"
         )
 
         message = gpt_response.choices[0].message
-        print(message)
 
         try:
+            # details = json.loads(message)
             details = json.loads(message.content)
         except json.decoder.JSONDecodeError as e:
             details = {'Error': e}
 
+        # print(details)
         return details
 
     def parse(self, filepath, categories, select_options):

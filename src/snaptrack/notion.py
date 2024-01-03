@@ -52,7 +52,7 @@ class NotionDB:
         return columns
 
     def add_row(self, row_content):
-        print(f"Row: {row_content}")
+        # print(f"Row: {row_content}")
 
         # build properties dictionary
         properties = {}
@@ -71,7 +71,7 @@ class NotionDB:
                 value = row_content[column_name]
             else:
                 value = str(row_content[column_name]).title()
-            print(f'{column_name}: {value}\n')
+            # print(f'{column_name}: {value}\n')
 
             # building properties dictionary for different types required different formatting
             # remove str
@@ -120,14 +120,14 @@ class NotionDB:
                 properties[column_name] = {'title': [{'text': {'content': str(value)}}]}
             elif column_type == 'multi_select':
                 try:
-                    print(value, type(value))
+                    # print(value, type(value))
                     assert isinstance(value, list)
                 except AssertionError:
                     raise NotionDBError(f"Value for multi_select column {column_name} must be a list", include_name=False)
                 
                 properties[column_name] = {'multi_select': [{'name': single_value} for single_value in value if single_value != '']}
 
-        print(properties)
+        # print(properties)
 
         try:
             self.notion.pages.create(
