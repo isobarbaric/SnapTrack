@@ -1,8 +1,14 @@
 [
     {
-        "vendor": "ROYAL AUTO CENTRE EMIS",
-        "product": "VISA CREDIT",
-        "date": "11/04/23",
-        "cost": "$551.44"
+        "Date": "2023/11/23",
+        "Place": "Guelph #1168",
+        "What": "Z FLIP5",
+        "Amount": "297.99"
+    },
+    {
+        "Date": "2023/11/23",
+        "Place": "Guelph #1168",
+        "What": "TPD/8777881",
+        "Amount": "220.00"
     }
 ]

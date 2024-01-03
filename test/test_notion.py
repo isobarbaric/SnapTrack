@@ -13,6 +13,4 @@ db = NotionDB(notion_token, database_id)
 
 db.print()
 # db.add_row(datetime.now(timezone.utc), "Textbook", "Study", 12.99)
-
-print(db.get_columns())
-
+# print(db.columns)
