@@ -54,20 +54,21 @@ class NotionDB:
     def add_row(self, row_content):
         # build properties dictionary
         properties = {}
-
+        
         for column in self.columns:
             column_name = column['name']
             column_type = column['type']
 
-            print(column_type)
+            # print(column_type)
             # getting value from row_content, and getting the right capitalization
-            if column_type != 'multi_select':
-                value = str(row_content[column_name]).title()
-            else:
+            if column_type == 'multi_select':
                 value = row_content[column_name]
+            else:
+                value = str(row_content[column_name]).title()
             print(f'{column_name}: {value}\n')
 
             # building properties dictionary for different types required different formatting
+            # remove str
             if column_type == 'title':
                 properties[column_name] = {'title': [{'text': {'content': str(value)}}]}
             elif column_type == 'text':
@@ -75,27 +76,32 @@ class NotionDB:
             elif column_type == 'number':
                 number = str(value)                
                 unwanted_entities = [',','$','€','£','¥','A$','CA$','CHF','CN¥','kr','NZ$']
+
                 for entity in unwanted_entities:
                     number = number.replace(entity, '')
-
                 properties[column_name] = {'number': float(number)}
             elif column_type == 'select':
+                if value == '':
+                    continue
+
+                # not working
                 properties[column_name] = {'select': {'name': str(value)}}
             elif column_type == 'date':
+                date = str(value)
+                # print("Date: ", date)
+                if date == '':
+                    continue
+
                 try:
-                    date = str(value)
-                    # print("Date: ", date)
                     if date != '' and date is not None and date != 'N/A':               
                         # extracting date from date incase time is included
                         date = str(date).split()[0]
-                        # print(f'Date: {date}')
                         date = datetime.strptime(date, '%Y/%m/%d')
-                        # print(f'Date: {date}')
                         date = str(date).split()[0]
-                        # print(f'Date: {date}')                   
-                    properties[column_name] = {'date': {'start': date, 'end': None}}
                 except Exception as e:
                     raise NotionDBError(e)                    
+
+                properties[column_name] = {'date': {'start': date, 'end': None}}
             elif column_type == 'url':
                 properties[column_name] = {'url': str(value)}
             elif column_type == 'email':
@@ -111,7 +117,7 @@ class NotionDB:
                 except AssertionError:
                     raise NotionDBError(f"Value for multi_select column {column_name} must be a list", include_name=False)
                 
-                properties[column_name] = {'multi_select': [{'name': single_value} for single_value in value]}
+                properties[column_name] = {'multi_select': [{'name': single_value} for single_value in value if single_value != '']}
 
         print(properties)
 

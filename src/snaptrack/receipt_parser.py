@@ -76,21 +76,26 @@ class ReceiptParser:
         for column in categories:
             criteria += f"\n- {column['name']} "
             if column['type'] == 'select':
-                criteria += "(this field is a selection field and you must choose one the following options: " + ''.join([f'{option}, ' for option in select_options[column['name']]][:-1]) 
+                criteria += "(this is a selection column of type 'select' and you can choose upto one of the following options; you can keep your selection empty in case no suitable category is available:  " + ''.join([f'{option}, ' for option in select_options[column['name']]][:-1]) 
                 
                 if len(select_options[column['name']]) > 1:
                     criteria += select_options[column['name']][-1] + ')'
                 else:
                     criteria += ')'
             elif column['type'] == 'multi_select':
-                criteria += "(this field is a multi-selection field and you must choose one or more of the following options: " + ''.join([f'{option}, ' for option in select_options[column['name']]][:-1])
+                criteria += "(this is a selection column of type 'multi_select' and you can choose multiple of the following categories (return your selection as a list); you can keep your selection empty in case no suitable categories are available: " + ''.join([f'{option}, ' for option in select_options[column['name']]][:-1])
 
                 if len(select_options[column['name']]) > 1:
                     criteria += select_options[column['name']][-1] + ')'
                 else:
                     criteria += ')'
         
-        prompt += receipt_list + f"\nReturn in JSON format the following information about each of the products on the receipt: {criteria}\nDo this for every single product on the receipt, and the format should be a list of such JSON objects (ensure the keys have the right spelling and case). Try your best in cases where context is unclear and return N/A for any unknown fields. Make sure any text values you return as part of a JSON object is in the proper case (e.g. 'Walmart' instead of 'WALMART' or 'wALMarT'). Additionally, make sure all dates are formatted like this: %Y/%m/%d and don't include the time in a date. Your response to this message should only be a list of JSON objects and nothing else."
+        prompt += receipt_list + f"\nReturn in JSON format the following information about each of the products on the receipt: {criteria}\nDo this for every single product on the receipt, and the format should be a list of such JSON objects (ensure the keys have the right spelling and case). Try your best in cases where context is unclear and return a blank string for any unknown fields. The selection columns are ['Bonus', 'What']. DON'T mix categories from one selection column (type 'select' or 'multi_select' column) with another column. Instead, only select category value(s) for a  selection column from its provided list of categories. Make sure any text values you return as part of a JSON object is in the proper case (e.g. 'Walmart' instead of 'WALMART' or 'wALMarT'). Additionally, make sure all dates are formatted like this: %Y/%m/%d and don't include the time in a date.  Your response to this message should only be a list of JSON objects and nothing else."
+
+        # order in sentence
+        # add selections columns manually to prompt in place of ['Bonus', 'What']
+
+        # prev = "DON'T mix up categories available for separate select and multi_select columns - make sure such selections only come from their own respective lists that are provided. Also don't create your own categories for select and multi_select columns, only work with categories that you are given as options."
 
         print(prompt)
 
