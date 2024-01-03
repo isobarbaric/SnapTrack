@@ -12,11 +12,16 @@ def main():
     db = NotionDB(notion_token, database_id)
     receipt_parser = ReceiptParser()
 
-    # print(db.columns)
+    print(db.columns)
     # print(db.select_options)
 
-    details = receipt_parser.parse("../../data/receipts/receipt2.jpg", categories = db.columns, select_options = db.select_options)
-    print(details)
+    products = receipt_parser.parse(filepath = "../../data/receipts/receipt2.jpg", 
+                                    categories = db.columns, 
+                                    select_options = db.select_options)
+    print(products)
+
+    for product in products:
+        db.add_row(product)
 
 if __name__ == '__main__':
     main()

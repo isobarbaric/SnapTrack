@@ -12,8 +12,10 @@ load_dotenv()
 openai_client = OpenAI(api_key = os.environ["OPENAI_API_KEY"])
 
 class ReceiptParserError(Exception):
-    def __init__(self, message):
-        self.message = message 
+    def __init__(self, exception):
+        # self.message = str(type(exception).__name__) + exception 
+        exception_str = str(exception)
+        self.message = f"{type(exception).__name__}: {exception_str}"
         super().__init__(self.message)
 
 class ReceiptParser:
@@ -76,7 +78,7 @@ class ReceiptParser:
             elif column['type'] == 'multi_select':
                 criteria += "(this field is a multi-selection field and you must choose one or more of the following options: " + ''.join([f'{option}, ' for option in select_options[column['name']]][:-1]) + select_options[column['name']][-1] + ')'
         
-        prompt += receipt_list + f"\nReturn in JSON format the following information about each of the products on the receipt: {criteria}\nDo this for every single product on the receipt, and the format should be a list of such JSON objects (ensure the keys have the right spelling and case)."
+        prompt += receipt_list + f"\nReturn in JSON format the following information about each of the products on the receipt: {criteria}\nDo this for every single product on the receipt, and the format should be a list of such JSON objects (ensure the keys have the right spelling and case). Make sure any textual values in a JSON object is in the proper case (e.g. 'Walmart' instead of 'WALMART' or 'wALMarT'). Don't include any JSON entries where you were unable to extract any nformation from the receipt."
 
         # print(prompt)
 

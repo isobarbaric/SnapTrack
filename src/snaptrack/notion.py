@@ -1,6 +1,12 @@
 from datetime import datetime
 from notion_client import Client
 
+class NotionDBError(Exception):
+    def __init__(self, exception):
+        exception_str = str(exception)
+        self.message = f"{type(exception).__name__}: {exception_str}"
+        super().__init__(self.message)
+
 class NotionDB:
 
     def __init__(self, notion_token, database_id):
@@ -42,15 +48,56 @@ class NotionDB:
 
         return columns
 
-    def add_row(self, date: datetime, place, what, amount):
+    def add_row(self, row_content):
+        # build properties dictionary
+        properties = {}
+
+        for column in self.columns:
+            column_name = column['name']
+            column_type = column['type']
+
+            value = row_content[column_name]
+            print(f'{column_name}: {value}\n')
+
+            try:
+                # building properties dictionary for different types required different formatting
+                if column_type == 'title':
+                    properties[column_name] = {'title': [{'text': {'content': str(value)}}]}
+                elif column_type == 'text':
+                    properties[column_name] = {'text': {'content': str(value)}}
+                elif column_type == 'number':
+                    number = str(value)                
+                    unwanted_entities = [',','$','€','£','¥','A$','CA$','CHF','CN¥','kr','NZ$']
+                    for entity in unwanted_entities:
+                        number = number.replace(entity, '')
+
+                    properties[column_name] = {'number': float(number)}
+                elif column_type == 'select':
+                    properties[column_name] = {'select': {'name': str(value)}}
+                elif column_type == 'date':
+                    date = str(value).split()[0]
+                    date = datetime.strptime(date, "%Y/%m/%d")
+                    # print(f'Date: {date}')
+                    properties[column_name] = {'date': {'start': str(date), 'end': None}}
+                elif column_type == 'url':
+                    properties[column_name] = {'url': str(value)}
+                elif column_type == 'email':
+                    properties[column_name] = {'email': str(value)}
+                elif column_type == 'phone_number':
+                    properties[column_name] = {'phone_number': str(value)}
+                elif column_type == 'title':
+                    properties[column_name] = {'title': [{'text': {'content': str(value)}}]}
+                elif column_type == 'multi_select':
+                    properties[column_name] = {'multi_select': [{'name': single_value} for single_value in value]}
+            
+            except Exception as e:
+                raise NotionDBError(e)
+
+        print(properties)
+
         self.notion.pages.create(
             parent = {'database_id': self.database_id},
-            properties = {
-                'Date': {'date': {'start': str(date).split()[0]}},
-                'Place': {'title':  [{'text': {'content': place}}]},
-                'What': {'multi_select': [{'name': what}]},
-                'Amount': {'number': amount}
-            }   
+            properties = properties
         )
 
     def print(self):
