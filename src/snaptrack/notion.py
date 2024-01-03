@@ -1,10 +1,13 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from notion_client import Client
 
 class NotionDBError(Exception):
-    def __init__(self, exception):
+    def __init__(self, exception, include_name=True):
         exception_str = str(exception)
-        self.message = f"{type(exception).__name__}: {exception_str}"
+        if include_name:
+            self.message = f"{type(exception).__name__}: {exception_str}"
+        else:
+            self.message = exception_str
         super().__init__(self.message)
 
 class NotionDB:
@@ -56,49 +59,69 @@ class NotionDB:
             column_name = column['name']
             column_type = column['type']
 
-            value = row_content[column_name]
+            print(column_type)
+            # getting value from row_content, and getting the right capitalization
+            if column_type != 'multi_select':
+                value = str(row_content[column_name]).title()
+            else:
+                value = row_content[column_name]
             print(f'{column_name}: {value}\n')
 
-            try:
-                # building properties dictionary for different types required different formatting
-                if column_type == 'title':
-                    properties[column_name] = {'title': [{'text': {'content': str(value)}}]}
-                elif column_type == 'text':
-                    properties[column_name] = {'text': {'content': str(value)}}
-                elif column_type == 'number':
-                    number = str(value)                
-                    unwanted_entities = [',','$','€','£','¥','A$','CA$','CHF','CN¥','kr','NZ$']
-                    for entity in unwanted_entities:
-                        number = number.replace(entity, '')
+            # building properties dictionary for different types required different formatting
+            if column_type == 'title':
+                properties[column_name] = {'title': [{'text': {'content': str(value)}}]}
+            elif column_type == 'text':
+                properties[column_name] = {'text': {'content': str(value)}}
+            elif column_type == 'number':
+                number = str(value)                
+                unwanted_entities = [',','$','€','£','¥','A$','CA$','CHF','CN¥','kr','NZ$']
+                for entity in unwanted_entities:
+                    number = number.replace(entity, '')
 
-                    properties[column_name] = {'number': float(number)}
-                elif column_type == 'select':
-                    properties[column_name] = {'select': {'name': str(value)}}
-                elif column_type == 'date':
-                    date = str(value).split()[0]
-                    date = datetime.strptime(date, "%Y/%m/%d")
-                    # print(f'Date: {date}')
-                    properties[column_name] = {'date': {'start': str(date), 'end': None}}
-                elif column_type == 'url':
-                    properties[column_name] = {'url': str(value)}
-                elif column_type == 'email':
-                    properties[column_name] = {'email': str(value)}
-                elif column_type == 'phone_number':
-                    properties[column_name] = {'phone_number': str(value)}
-                elif column_type == 'title':
-                    properties[column_name] = {'title': [{'text': {'content': str(value)}}]}
-                elif column_type == 'multi_select':
-                    properties[column_name] = {'multi_select': [{'name': single_value} for single_value in value]}
-            
-            except Exception as e:
-                raise NotionDBError(e)
+                properties[column_name] = {'number': float(number)}
+            elif column_type == 'select':
+                properties[column_name] = {'select': {'name': str(value)}}
+            elif column_type == 'date':
+                try:
+                    date = str(value)
+                    # print("Date: ", date)
+                    if date != '' and date is not None and date != 'N/A':               
+                        # extracting date from date incase time is included
+                        date = str(date).split()[0]
+                        # print(f'Date: {date}')
+                        date = datetime.strptime(date, '%Y/%m/%d')
+                        # print(f'Date: {date}')
+                        date = str(date).split()[0]
+                        # print(f'Date: {date}')                   
+                    properties[column_name] = {'date': {'start': date, 'end': None}}
+                except Exception as e:
+                    raise NotionDBError(e)                    
+            elif column_type == 'url':
+                properties[column_name] = {'url': str(value)}
+            elif column_type == 'email':
+                properties[column_name] = {'email': str(value)}
+            elif column_type == 'phone_number':
+                properties[column_name] = {'phone_number': str(value)}
+            elif column_type == 'title':
+                properties[column_name] = {'title': [{'text': {'content': str(value)}}]}
+            elif column_type == 'multi_select':
+                try:
+                    print(value, type(value))
+                    assert isinstance(value, list)
+                except AssertionError:
+                    raise NotionDBError(f"Value for multi_select column {column_name} must be a list", include_name=False)
+                
+                properties[column_name] = {'multi_select': [{'name': single_value} for single_value in value]}
 
         print(properties)
 
-        self.notion.pages.create(
-            parent = {'database_id': self.database_id},
-            properties = properties
-        )
+        try:
+            self.notion.pages.create(
+                parent = {'database_id': self.database_id},
+                properties = properties
+            )
+        except Exception as e:
+            raise NotionDBError("Unable to add row to database", include_name=False)
 
     def print(self):
         database_row = []
