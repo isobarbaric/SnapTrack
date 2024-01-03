@@ -67,16 +67,18 @@ class ReceiptParser:
         receipt_list += f"{aws_response[-1]}]"
 
         # adding additional info to prompt
-        # criteria = ''.join([f'\n- {col} ' for col in categories]) + '\n'
+        # TODO: clean up code
         criteria = ''
         for column in categories:
             criteria += f"\n- {column['name']} "
-            if column['type'] == 'select' or column['type'] == 'multi_select':
+            if column['type'] == 'select':
                 criteria += "(this field is a selection field and you must choose one the following options: " + ''.join([f'{option}, ' for option in select_options[column['name']]][:-1]) + select_options[column['name']][-1] + ')'
- 
+            elif column['type'] == 'multi_select':
+                criteria += "(this field is a multi-selection field and you must choose one or more of the following options: " + ''.join([f'{option}, ' for option in select_options[column['name']]][:-1]) + select_options[column['name']][-1] + ')'
+        
         prompt += receipt_list + f"\nReturn in JSON format the following information about each of the products on the receipt: {criteria}\nDo this for every single product on the receipt, and the format should be a list of such JSON objects (ensure the keys have the right spelling and case)."
 
-        print(prompt)
+        # print(prompt)
 
         # passing prompt to GPT-3.5 and gettings its response
         gpt_response = openai_client.chat.completions.create(
@@ -90,7 +92,7 @@ class ReceiptParser:
         )
 
         message = gpt_response.choices[0].message
-        print(message)
+        # print(message)
 
         try:
             details = json.loads(message.content)

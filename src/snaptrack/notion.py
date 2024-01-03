@@ -7,52 +7,38 @@ class NotionDB:
         self.notion = Client(auth = notion_token)
         self.database_id = database_id
 
+        # structure of database
         self.structure = self.notion.databases.retrieve(self.database_id)
+        # print(self.structure)
 
         # column headers by name
         self.pages = self.notion.databases.query(self.database_id)
         self._columns = list(self.pages['results'][0]['properties'].keys())
 
+        # saving options for the columns that are select or multi-select
         self.select_options = {}
 
-        # column headers by name, and includes types
+        # column headers by name, and also includes types
         self.columns = self.get_columns()
 
-    # change so doesn't rely on the first row existing
     def get_columns(self):
         # doesn't support checkbox, relation, rollup, formula, file
         # these are not relevant for finance tracking, so should be fine
 
-        columns = []
-        page_content = self.pages['results'][0]['properties']
+        columns = []        
+        properties = self.structure['properties']
 
-        for column in self._columns:
-            curr_column = page_content[column]
-            value = None
-            if curr_column['type'] == 'text':
-                value = curr_column['text']['content']
-            elif curr_column['type'] == 'number':
-                value = curr_column['number']
-            elif curr_column['type'] == 'select':
-                value = curr_column['select']['name']
-            elif curr_column['type'] == 'date':
-                value = curr_column['date']['start']
-            elif curr_column['type'] == 'url':
-                value = curr_column['url']
-            elif curr_column['type'] == 'email':
-                value = curr_column['email']
-            elif curr_column['type'] == 'phone_number':
-                value = curr_column['phone_number']
-            elif curr_column['type'] == 'title':
-                value = curr_column['title'][0]['text']['content']
-            elif curr_column['type'] == 'multi_select':
-                value = curr_column['multi_select'][0]['name']
+        for key in properties:
+            column_name = properties[key]['name']
 
-            value = {'name': column, 'type': curr_column['type']}
+            if properties[key]['type'] == 'select':
+                self.select_options[properties[key]['name']] = [option['name'] for option in self.structure['properties'][column_name]['select']['options']]
+
+            if properties[key]['type'] == 'multi_select':
+                self.select_options[properties[key]['name']] = [option['name'] for option in self.structure['properties'][column_name]['multi_select']['options']]
+                
+            value = {'name': properties[key]['name'], 'type': properties[key]['type']}
             columns.append(value)
-
-            if curr_column['type'] in ['select', 'multi_select']:
-                self.select_options[column] = [option['name'] for option in self.structure['properties'][column]['multi_select']['options']]
 
         return columns
 
@@ -76,6 +62,7 @@ class NotionDB:
 
             for column in self.columns:
                 curr_column = page_content[column]
+
                 value = None
                 if curr_column['type'] == 'text':
                     value = curr_column['text']['content']
