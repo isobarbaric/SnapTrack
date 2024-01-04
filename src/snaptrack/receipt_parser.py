@@ -96,14 +96,20 @@ class ReceiptParser:
             else:
                 self.get_select_col(purchases, column_name, 'multi_select', select_options[column_name])
 
+        # TODO: clean up this function, consolidate with filter_non_select_cols
         # TODO: apply half filled to non-select content (not just textual, date, amount)
-
-        # filter columns
+        non_select_columns = []
+        for column in columns:
+            if not column['type'] in ['select', 'multi_select']:
+                non_select_columns.append(column['name'])
+ 
+        # change this filtering to check for non-text content
         filtered_purchases = []
         for purchase in purchases:
             num_empty = 0
-            for _, value in purchase.items():
-                if value == '':
+            # for _, value in purchase.items():
+            for column in non_select_columns:
+                if purchase[column] == '':
                     num_empty += 1
             if num_empty <= int(len(columns)/2):
                 filtered_purchases.append(purchase)
@@ -173,9 +179,8 @@ class ReceiptParser:
 
         return response
  
-    def filter_non_select_cols(self, purchases, columns):
-        
-        # TODO: check if date/amount in column
+    def filter_non_select_cols(self, purchases, columns):        
+        # TODO: check if anything other than text; date/amount/phone_number/url in column
         def contains_unwanted_words(purchase_column):
             lower_input = purchase_column.lower()
             for word in ['tax', 'change', 'cash', 'card', 'amount', 'total', 'subtotal', 'discount', 'hst', 'gst', 'invoice', 'purchase', 'customer', 'receipt', 'round', 'balance', '.com', '.ca', 'feedback', 'swipe', 'sale', '*']:
@@ -184,35 +189,21 @@ class ReceiptParser:
             return False
         
         textual_columns = []
-        non_select_columns = []
         for column in columns:
-            if not column['type'] in ['select', 'multi_select']:
-                non_select_columns.append(column['name'])
             if column['type'] in ['title', 'text']:
                 textual_columns.append(column['name'])
             
         text_filtered_response = []
         for purchase in purchases:
-            # print(f'purchase: {purchase}')
             keep_purchase = True
             for column_name in textual_columns:
-                # print(f'current column: {purchase[column_name]}')
                 if len(purchase[column_name]) <= 2:
                     keep_purchase = False
-                    # purchase[column_name] = ''                    
 
                 if contains_unwanted_words(purchase[column_name]):
                     keep_purchase = False
-                    # purchase[column_name] = ''
             if keep_purchase:
                 text_filtered_response.append(purchase)
-            # print('\n')
-        # print(filtered_response)
-
-        # non_select_filtered_response = []
-        # for purchase in purchases:
-        #     for column in non_select_columns:
-        #         if 
 
         return text_filtered_response
 
