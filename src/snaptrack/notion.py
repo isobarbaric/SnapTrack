@@ -88,8 +88,8 @@ class NotionDB:
                     try:
                         properties[column_name] = {'number': float(number)}
                     except Exception:
-                        # properties[column_name] = {'number': None}
-                        raise NotionDBError(f"Number {number} is not in the correct format", include_name=False)
+                        properties[column_name] = {'number': None}
+                        # raise NotionDBError(f"Number {number} is not in the correct format", include_name=False)
                 else:
                     properties[column_name] = {'number': None}
             elif column_type == 'select':
@@ -120,8 +120,6 @@ class NotionDB:
                 properties[column_name] = {'email': str(value)}
             elif column_type == 'phone_number':
                 properties[column_name] = {'phone_number': str(value)}
-            elif column_type == 'title':
-                properties[column_name] = {'title': [{'text': {'content': str(value)}}]}
             elif column_type == 'multi_select':
                 try:
                     # print(value, type(value))

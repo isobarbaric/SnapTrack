@@ -96,15 +96,20 @@ class ReceiptParser:
             else:
                 self.get_select_col(purchases, column_name, 'multi_select', select_options[column_name])
 
+        # TODO: apply half filled to non-select content (not just textual, date, amount)
+
         # filter columns
         filtered_purchases = []
         for purchase in purchases:
             num_empty = 0
-            for key, value in purchase.items():
+            for _, value in purchase.items():
                 if value == '':
                     num_empty += 1
             if num_empty <= int(len(columns)/2):
                 filtered_purchases.append(purchase)
+
+        # change to filtered_purchases
+        filtered_purchases = self.filter_non_select_cols(filtered_purchases, columns)
 
         return filtered_purchases
 
@@ -147,6 +152,7 @@ class ReceiptParser:
             
             return message.content
 
+    # add filtering here
     def process_non_select_cols(self, receipt_list, categories):
         # created a detailed prompt for task
         prompt = "There are labels that represent columns in a Notion database. Scrutinize all extracted text for each entry in the receipt and assign them to appropriate labels (don't create your own labels, only create keys for given labels). For a particular product, assign a label an empty string if you are unsure what value should be assigned, but make sure to ALWAYS include every label for a particular entry. Please include dates in %Y/%m/%d format excluding time, and correct the content in a title word format. Note that each entry will have the same date (receipt will have a single date on it somewhere). Your output should ONLY be a list of JSON objects and nothing else. Don't list payment details, vendor details as separate purchases. This list is text extracted from a paper receipt: "
@@ -162,50 +168,54 @@ class ReceiptParser:
 
         prompt += columns
 
-        return self.get_gpt_response(prompt)
-        # print(prompt)
+        response = self.get_gpt_response(prompt)
+        # print(response)
 
-        # remove those with empty 
-        # count length
-        # sort, choose elem with minimum length
-
-        # batches = []
-        # for i in range(1, 4):
-        #     processing one batch of responses
-        #     print(f'Batch #{i}')
-        #     current_batch = []
-
-        #     try:
-        #         gpt_json = self.get_gpt_response(prompt)
-        #     except Exception as e:
-        #         pass
-
-        #     for entry in gpt_json:
-        #         curr_entry = 0
-        #         for key, value in entry.items():
-        #             if value == '':
-        #                 curr_entry += 1
-        #         if curr_entry <= int(len(categories)/2):
-        #             current_batch.append(entry)
-            
-        #     batches.append([len(current_batch), current_batch])
-        #     print(batches[-1])
-        #     print('\n')
-        #     time.sleep(1)
-    
-        # print(batches)
-
-        # batches.sort()
-        # min_batch_size = 100000
-        # best_batch = None
-        # for batch in batches:
-        #     if batch[0] < min_batch_size:
-        #         min_batch_size = batch[0]
-        #         best_batch = batch[1]
-        
-        # return best_batch
+        return response
  
-    # return this as a list
+    def filter_non_select_cols(self, purchases, columns):
+        
+        # TODO: check if date/amount in column
+        def contains_unwanted_words(purchase_column):
+            lower_input = purchase_column.lower()
+            for word in ['tax', 'change', 'cash', 'card', 'amount', 'total', 'subtotal', 'discount', 'hst', 'gst', 'invoice', 'purchase', 'customer', 'receipt', 'round', 'balance', '.com', '.ca', 'feedback', 'swipe', 'sale', '*']:
+                if word in lower_input:
+                    return True
+            return False
+        
+        textual_columns = []
+        non_select_columns = []
+        for column in columns:
+            if not column['type'] in ['select', 'multi_select']:
+                non_select_columns.append(column['name'])
+            if column['type'] in ['title', 'text']:
+                textual_columns.append(column['name'])
+            
+        text_filtered_response = []
+        for purchase in purchases:
+            # print(f'purchase: {purchase}')
+            keep_purchase = True
+            for column_name in textual_columns:
+                # print(f'current column: {purchase[column_name]}')
+                if len(purchase[column_name]) <= 2:
+                    keep_purchase = False
+                    # purchase[column_name] = ''                    
+
+                if contains_unwanted_words(purchase[column_name]):
+                    keep_purchase = False
+                    # purchase[column_name] = ''
+            if keep_purchase:
+                text_filtered_response.append(purchase)
+            # print('\n')
+        # print(filtered_response)
+
+        # non_select_filtered_response = []
+        # for purchase in purchases:
+        #     for column in non_select_columns:
+        #         if 
+
+        return text_filtered_response
+
     def get_select_col(self, purchases, column_name, column_type, options):
         if column_type not in ['select', 'multi_select']:
             raise ReceiptParserError(f"Invalid column type {column_type} passed as selection column", include_name=False)

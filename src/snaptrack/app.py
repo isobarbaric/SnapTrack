@@ -17,7 +17,7 @@ def main():
     # print(db.columns)
     # print(db.select_options)
 
-    products = receipt_parser.parse(filepath = "../../data/receipts/receipt2.jpg", 
+    products = receipt_parser.parse(filepath = "../../data/receipts/receipt3.jpg", 
                                     columns = db.columns, 
                                     select_options = db.select_options)
     # print(products)
