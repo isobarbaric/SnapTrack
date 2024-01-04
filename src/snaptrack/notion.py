@@ -85,7 +85,11 @@ class NotionDB:
                     unwanted_entities = [',','$','€','£','¥','A$','CA$','CHF','CN¥','kr','NZ$']
                     for entity in unwanted_entities:
                         number = number.replace(entity, '')
-                    properties[column_name] = {'number': float(number)}
+                    try:
+                        properties[column_name] = {'number': float(number)}
+                    except Exception:
+                        # properties[column_name] = {'number': None}
+                        raise NotionDBError(f"Number {number} is not in the correct format", include_name=False)
                 else:
                     properties[column_name] = {'number': None}
             elif column_type == 'select':
@@ -106,8 +110,8 @@ class NotionDB:
                         date = str(date).split()[0]
                         date = datetime.strptime(date, '%Y/%m/%d')
                         date = str(date).split()[0]
-                except Exception as e:
-                    raise NotionDBError(e)                    
+                except Exception:
+                    raise NotionDBError(f"Date {date} is not in the correct format", include_name=False)
 
                 properties[column_name] = {'date': {'start': date, 'end': None}}
             elif column_type == 'url':

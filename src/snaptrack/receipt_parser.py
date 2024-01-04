@@ -1,3 +1,4 @@
+import ast
 import boto3
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
@@ -49,7 +50,7 @@ class ReceiptParser:
 
         return response
 
-    def parse_rekognition_response(self, aws_response, categories, select_options = None):
+    def parse_rekognition_response(self, aws_response, columns, select_options = None):
         """Parses receipt and returns JSON dictionary 
 
         :param aws_response: a AWS Rekognition result
@@ -59,6 +60,13 @@ class ReceiptParser:
         :return: a list of items contained in the receipt
         :rtype: JSON dictionary
         """
+
+        def get_target_column(target, columns):
+            for item in columns:
+                if item['name'] == target:
+                    return item
+            return -1
+
         # clean up response to only include text content
         aws_text = [elem['DetectedText'] for elem in aws_response['TextDetections']]
 
@@ -68,43 +76,80 @@ class ReceiptParser:
             receipt_list += f"{item}, "
         receipt_list += f"{aws_text[-1]}]"
         
-        # print(prompt)
         # passing prompt to GPT-3.5 and gettings its response
-        purchases = self.process_non_select_cols(receipt_list, categories)
+        valid_gpt_response = False
+        while not valid_gpt_response:
+            purchases = self.process_non_select_cols(receipt_list, columns)
+            if 'Error' not in purchases:
+                valid_gpt_response = True
 
-        select_column_names = select_options.keys()
-        print(purchases)
+        # batching purchases necessary for efficiency purposes
+        # otherwise running with selection columns in a longer list where some of the entries are not passable from the beginning
+                
+        select_column_names = list(select_options.keys())
 
         # loop through individual select columns and add key to each page
-        # code here
+        for column_name in list(select_column_names):
+            target = get_target_column(column_name, columns)
+            if target['type'] == 'select':
+                self.get_select_col(purchases, column_name, 'select', select_options[column_name])
+            else:
+                self.get_select_col(purchases, column_name, 'multi_select', select_options[column_name])
 
-        return purchases
+        # filter columns
+        filtered_purchases = []
+        for purchase in purchases:
+            num_empty = 0
+            for key, value in purchase.items():
+                if value == '':
+                    num_empty += 1
+            if num_empty <= int(len(columns)/2):
+                filtered_purchases.append(purchase)
 
-    def get_gpt_response(self, prompt):
-        gpt_response = openai_client.chat.completions.create(
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt,
-                }
-            ],
-            model="gpt-3.5-turbo"
-        )
+        return filtered_purchases
 
-        message = gpt_response.choices[0].message
-        # print(message)
+    def get_gpt_response(self, prompt, as_json=True):
+        if as_json:
+            gpt_response = openai_client.chat.completions.create(
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt,
+                    }
+                ],
+                model="gpt-3.5-turbo"
+            )
 
-        try:
-            # details = json.loads(message)
-            details = json.loads(message.content)
-        except json.decoder.JSONDecodeError as e:
-            details = {'Error': e}
+            message = gpt_response.choices[0].message
+            # print(message)
 
-        return details
+            try:
+                # details = json.loads(message)
+                details = json.loads(message.content)
+            except json.decoder.JSONDecodeError as e:
+                details = {'Error': e}
+            
+            return details
+        
+        else:
+            gpt_response = openai_client.chat.completions.create(
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt,
+                    }
+                ],
+                model="gpt-3.5-turbo"
+            )
+
+            message = gpt_response.choices[0].message
+            # print(message)
+            
+            return message.content
 
     def process_non_select_cols(self, receipt_list, categories):
         # created a detailed prompt for task
-        prompt = "There are labels that represent columns in a Notion database. Scrutinize all extracted text for each entry in the receipt and assign them to appropriate labels (don't create your own labels, only create keys for given labels). For a particular product, assign a label an empty string if you are unsure what value should be assigned, but make sure to ALWAYS include every label for a particular entry. Please include dates in %Y/%m/%d format excluding time, and correct the content in a title word format. Note that each entry will have the same date that should be a part of the receipt. Your output should ONLY be a list of JSON objects and nothing else. Don't list payment details, vendor details as separate purchases. This list is text extracted from a paper receipt: "
+        prompt = "There are labels that represent columns in a Notion database. Scrutinize all extracted text for each entry in the receipt and assign them to appropriate labels (don't create your own labels, only create keys for given labels). For a particular product, assign a label an empty string if you are unsure what value should be assigned, but make sure to ALWAYS include every label for a particular entry. Please include dates in %Y/%m/%d format excluding time, and correct the content in a title word format. Note that each entry will have the same date (receipt will have a single date on it somewhere). Your output should ONLY be a list of JSON objects and nothing else. Don't list payment details, vendor details as separate purchases. This list is text extracted from a paper receipt: "
 
         # adding items on receipt to prompt
         prompt += receipt_list
@@ -116,94 +161,105 @@ class ReceiptParser:
             columns += f"\n- {column['name']} "
 
         prompt += columns
+
+        return self.get_gpt_response(prompt)
         # print(prompt)
 
         # remove those with empty 
         # count length
         # sort, choose elem with minimum length
 
-        batches = []
-        for i in range(1, 4):
-            # processing one batch of responses
-            # print(f'Batch #{i}')
-            current_batch = []
+        # batches = []
+        # for i in range(1, 4):
+        #     processing one batch of responses
+        #     print(f'Batch #{i}')
+        #     current_batch = []
 
-            try:
-                gpt_json = self.get_gpt_response(prompt)
-            except Exception as e:
-                pass
+        #     try:
+        #         gpt_json = self.get_gpt_response(prompt)
+        #     except Exception as e:
+        #         pass
 
-            for entry in gpt_json:
-                curr_entry = 0
-                for key, value in entry.items():
-                    if value == '':
-                        curr_entry += 1
-                if curr_entry <= int(len(categories)/2):
-                    current_batch.append(entry)
+        #     for entry in gpt_json:
+        #         curr_entry = 0
+        #         for key, value in entry.items():
+        #             if value == '':
+        #                 curr_entry += 1
+        #         if curr_entry <= int(len(categories)/2):
+        #             current_batch.append(entry)
             
-            batches.append([len(current_batch), current_batch])
-            # print(batches[-1])
-            # print('\n')
-            time.sleep(1)
+        #     batches.append([len(current_batch), current_batch])
+        #     print(batches[-1])
+        #     print('\n')
+        #     time.sleep(1)
     
         # print(batches)
 
         # batches.sort()
-        min_batch_size = 100000
-        best_batch = None
-        for batch in batches:
-            if batch[0] < min_batch_size:
-                min_batch_size = batch[0]
-                best_batch = batch[1]
+        # min_batch_size = 100000
+        # best_batch = None
+        # for batch in batches:
+        #     if batch[0] < min_batch_size:
+        #         min_batch_size = batch[0]
+        #         best_batch = batch[1]
         
-        # remove lists with empty length from batches.append
-        # first figure out why getting zero length
-
-        # choose between similar length lists
-
-        return best_batch
+        # return best_batch
  
-    def process_select_columns(self, aws_response, categories, select_options = None):
-        prompt = "Some of the columns of the database are of type 'Select' and type 'Multi-select' and hence have associated categories. For such columns, please do not mix categories defined within one label with another."
+    # return this as a list
+    def get_select_col(self, purchases, column_name, column_type, options):
+        if column_type not in ['select', 'multi_select']:
+            raise ReceiptParserError(f"Invalid column type {column_type} passed as selection column", include_name=False)
 
-        # building a list of all of the text items on the receipt
-        receipt_list = "["
-        for item in aws_response[:-1]:
-            receipt_list += f"{item}, "
-        receipt_list += f"{aws_response[-1]}]"
+        if column_type == 'select':
+            prompt = "We are working with a Notion database that has a column of type 'Select'. The goal is to select upto one (you can choose zero) of the following options based on whether you believe they are related to the specific purchase entry or not. Do not create your own options, only choose from the ones provided. Respond WITH ONLY a SINGLE WORD, i.e. the option you choose. Please don't say anything else. Your options are: "
+        elif column_type == 'multi_select':
+            prompt = "We are working with a Notion database that has a column of type 'Multi-select'. The goal is to select multiple of the following options (return your selection as a list) based on whether you believe they are related to the specific purchase entry or not. Do not create your own options, only choose from the ones provided. Respond with a PYTHON LIST OF WORDS, i.e. the options you choose. Remember to put quotation marks around the words in that list to ensure it is syntatically correct Python. Please don't say anything else. Your options are: "
 
-        # adding additional info to prompt
-        # TODO: clean up code
-        criteria = ''
-        for column in categories:
-            criteria += f"\n- {column['name']} "
-            if column['type'] == 'select':
-                criteria += "(this is a column of type 'Select' and you can choose upto one of the following options; you can keep your selection empty in case no suitable category is available:  " + ''.join([f'{option}, ' for option in select_options[column['name']]][:-1]) 
-                
-                if len(select_options[column['name']]) > 1:
-                    criteria += select_options[column['name']][-1] + ')'
-                else:
-                    criteria += ')'
-            elif column['type'] == 'multi_select':
-                criteria += "(this is a column of type 'Multi-select' and you can choose multiple of the following categories (return your selection as a list); you can keep your selection empty in case no suitable categories are available: " + ''.join([f'{option}, ' for option in select_options[column['name']]][:-1])
+        if len(options) == 0:
+            return ReceiptParserError(f"No options provided for column {column_name}", include_name=False)
 
-                if len(select_options[column['name']]) > 1:
-                    criteria += select_options[column['name']][-1] + ')'
-                else:
-                    criteria += ')'
-        
-        prompt += receipt_list + f"\nYour labels are {criteria}"
+        criteria = ''.join([f'{option}, ' for option in options][:-1]) + options[-1]
+        prompt += criteria
+    
+        # iterate through all pages
+        # based on page details, ask gpt to determine which of category's options is the best fit
+        # add that key to that page
+        # return pages
 
-    def parse(self, filepath, categories, select_options):
+        mod_purchases = []
+
+        for purchase in purchases:
+            curr_prompt = prompt + f"\n And the current entry in question is: {purchase}"
+            # print(curr_prompt)
+
+            curr_gpt_response = self.get_gpt_response(curr_prompt, as_json=False)
+            # print(curr_gpt_response)
+
+            unmodified_purchase = purchase
+            # print(unmodified_purchase)
+
+            if column_type == 'select':
+                unmodified_purchase[column_name] = curr_gpt_response
+            else:
+                try:
+                    unmodified_purchase[column_name] = ast.literal_eval(curr_gpt_response)
+                except Exception:
+                    print(f"Error: {curr_gpt_response}")
+                    raise ReceiptParserError(f"Unable to parse GPT response {curr_gpt_response} as a list", include_name=False)
+            mod_purchases.append(unmodified_purchase)
+
+        return mod_purchases
+
+    def parse(self, filepath, columns, select_options = None):
         rekognition_response = self.get_rekognition_response(filepath)
         if 'Error' in rekognition_response:
             # raise ReceiptParserError(rekognition_response['Error'])
             # separate issue, change description
 
             # print(parsed_response['Error'])
-            raise ReceiptParserError("Invalid AWS response", include_name=False)
+            raise ReceiptParserError("invalid AWS response", include_name=False)
 
-        parsed_response = self.parse_rekognition_response(rekognition_response, categories, select_options)
+        parsed_response = self.parse_rekognition_response(rekognition_response, columns, select_options)
         if 'Error' in parsed_response:
             # raise ReceiptParserError(parsed_response['Error'])
             # str: Expecting value: line 1 column 1 (char 0)

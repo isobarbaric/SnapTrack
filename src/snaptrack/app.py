@@ -17,16 +17,16 @@ def main():
     # print(db.columns)
     # print(db.select_options)
 
-    products = receipt_parser.parse(filepath = "../../data/receipts/receipt3.jpg", 
-                                    categories = db.columns, 
+    products = receipt_parser.parse(filepath = "../../data/receipts/receipt2.jpg", 
+                                    columns = db.columns, 
                                     select_options = db.select_options)
-    print(products)
+    # print(products)
 
     # select_fields = db.select_options.keys()
     # print(select_fields)
-    # for product in products:
-    #     print(product)
-    #     db.add_row(product)
+    for product in products:
+        print(product)
+        db.add_row(product)
 
     end = time.time()
     print(f'\n{end - start} seconds elapsed')
