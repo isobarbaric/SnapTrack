@@ -20,6 +20,7 @@ class NotionDB:
         self.structure = self.notion.databases.retrieve(self.database_id)
         # print(self.structure)
 
+        # TODO: get column headers using retrieve
         # column headers by name
         self.pages = self.notion.databases.query(self.database_id)
         self._columns = list(self.pages['results'][0]['properties'].keys())

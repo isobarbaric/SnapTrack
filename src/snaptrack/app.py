@@ -27,7 +27,7 @@ def main():
         # print(f"Attempt Number #{attempt_number}")
 
         products = receipt_parser.parse(
-            filepath = "../../data/receipts/receipt3.jpg", 
+            filepath = "../../data/receipts/receipt4.jpg", 
             columns = database.columns, 
             select_options = database.select_options
         )
