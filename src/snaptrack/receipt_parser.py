@@ -116,24 +116,28 @@ class ReceiptParser:
         filtration_time_start = time.time()
 
         # TODO: clean up this function, consolidate with filter_non_select_cols
-        non_select_columns = []
-        for column in columns:
-            if not column['type'] in ['select', 'multi_select']:
-                non_select_columns.append(column['name'])
+        # non_select_columns = []
+        # for column in columns:
+        #     if not column['type'] in ['select', 'multi_select']:
+        #         non_select_columns.append(column['name'])
  
-        # change this filtering to check for non-text content
-        filtered_entries = []
-        for purchase in entries:
-            num_empty = 0
-            for column in non_select_columns:
-                if purchase[column] == '':
-                    num_empty += 1
-            if num_empty <= int(len(columns)/2):
-                filtered_entries.append(purchase)
+        # # change this filtering to check for non-text content
+        # filtered_entries = []
+        # for purchase in entries:
+        #     num_empty = 0
+        #     for column in non_select_columns:
+        #         if purchase[column] == '':
+        #             num_empty += 1
+        #     if num_empty <= int(len(columns)/2):
+        #         filtered_entries.append(purchase)
 
-        entry_history.append(len(filtered_entries))
-        filtered_entries = self.filter_non_select_cols(filtered_entries, columns)
-        entry_history.append(len(filtered_entries))
+        filtered_entries = self.filter_content(entries, columns)
+
+        # filtered_entries = self.filter_select_cols(entries, columns)
+
+        # entry_history.append(len(filtered_entries))
+        # filtered_entries = self.filter_non_select_cols(filtered_entries, columns)
+        # entry_history.append(len(filtered_entries))
 
         # print(f"Entries after filtering: {filtered_entries}")
 
@@ -248,6 +252,10 @@ class ReceiptParser:
 
         return mod_entries
 
+    def filter_content(self, entries, columns):
+        filtered_entries = self.filter_select_cols(entries, columns)
+        return self.filter_non_select_cols(filtered_entries, columns)
+
     def filter_non_select_cols(self, entries, columns):        
         def contains_unwanted_content(entry_column):
             lower_input = entry_column.lower()
@@ -271,7 +279,6 @@ class ReceiptParser:
                 # credit card
                 r'\b(?:\d[ -]*?){13,16}\b',
                 r'\b(?:\d[ -]x?){13,16}\b'
-                r'\b(?:\d[ -]X?){13,16}\b'
             ]
             for pattern in unwanted_patterns:
                 if re.search(pattern, entry_column):
@@ -296,6 +303,24 @@ class ReceiptParser:
                 text_filtered_response.append(entry)
 
         return text_filtered_response
+
+    def filter_select_cols(self, entries, columns):
+        non_select_columns = []
+        for column in columns:
+            if not column['type'] in ['select', 'multi_select']:
+                non_select_columns.append(column['name'])
+ 
+        # change this filtering to check for non-text content
+        filtered_entries = []
+        for purchase in entries:
+            num_empty = 0
+            for column in non_select_columns:
+                if purchase[column] == '':
+                    num_empty += 1
+            if num_empty <= int(len(columns)/2):
+                filtered_entries.append(purchase)
+        
+        return filtered_entries
 
     def parse(self, filepath, columns, select_options = None):
         rekognition_response = self.get_rekognition_response(filepath)
