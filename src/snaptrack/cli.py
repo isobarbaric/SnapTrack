@@ -4,17 +4,15 @@ from snaptrack.receipt_parser import ReceiptParser
 from snaptrack.notion import NotionDB
 import time
 
+# load environment variables
 load_dotenv()
 
 notion_token = os.environ["NOTION_TOKEN"]
 database_id = os.environ["NOTION_DATABASE_ID"]
 
-def setup():
-    pass
-
 def main():
     start = time.time()
-
+    
     receipt_parser = ReceiptParser()
     database = NotionDB(notion_token, database_id)
     # print(database.columns)
