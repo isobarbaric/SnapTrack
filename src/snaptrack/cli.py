@@ -1,8 +1,10 @@
+import click
 from dotenv import load_dotenv
 import os
 from snaptrack.receipt_parser import ReceiptParser
 from snaptrack.notion import NotionDB
 import time
+from yaspin import yaspin
 
 # load environment variables
 load_dotenv()
@@ -10,12 +12,18 @@ load_dotenv()
 notion_token = os.environ["NOTION_TOKEN"]
 database_id = os.environ["NOTION_DATABASE_ID"]
 
-def main():
+@click.command()
+@click.argument('filepath', type=click.Path(exists=True), nargs=1)
+def send_receipt(filepath):
+    """Send receipt to Notion database"""
+    with yaspin(text="Processing...", color="yellow") as spinner:
+        add_receipt(filepath)
+
+def add_receipt(filepath: str):
     start = time.time()
     
     receipt_parser = ReceiptParser()
     database = NotionDB(notion_token, database_id)
-    # print(database.columns)
 
     products_valid = False
     products = None
@@ -26,7 +34,7 @@ def main():
             raise Exception("Unable to parse receipt")
         
         products = receipt_parser.parse(
-            filepath = "../../data/receipts/receipt3.jpg", 
+            filepath = filepath, 
             columns = database.columns, 
             select_options = database.select_options
         )
@@ -46,4 +54,4 @@ def main():
     print(f'\nTotal: {end - start} seconds elapsed')
 
 if __name__ == '__main__':
-    main()
+    send_receipt()
