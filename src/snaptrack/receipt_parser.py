@@ -15,15 +15,16 @@ load_dotenv()
 openai_client = OpenAI(api_key = os.environ["OPENAI_API_KEY"])
 
 class ReceiptParserError(Exception):
-    def __init__(self, exception, include_name=True):
-        exception_str = str(exception)
-        if include_name:
-            self.message = f"{type(exception).__name__}: {exception_str}"
-        else:
-            self.message = exception_str
+    """Error class for the ReceiptParser class
+    """
+
+    def __init__(self, error_msg):
+        self.message = error_msg
         super().__init__(self.message)
 
 class ReceiptParser:
+    """Parses receipts
+    """
 
     def __init__(self):
         pass
@@ -33,6 +34,7 @@ class ReceiptParser:
 
         :param filename: name of image file
         :type filename: str
+
         :return: a AWS Rekognition result
         :rtype: JSON dictionary
         """
@@ -58,6 +60,7 @@ class ReceiptParser:
         :type aws_response: JSON dictionary
         :param columns: a list of columns to parse for, stuctured as {column_name: column_type}
         :type columns: list of dictionaries
+
         :return: a list of items contained in the receipt
         :rtype: JSON dictionary
         """
@@ -67,69 +70,78 @@ class ReceiptParser:
 
         # building a list of all of the text items on the receipt
         receipt_list = "["
-        
         for item in aws_text[:-1]:
             receipt_list += f"{item}, "
-        
         receipt_list += f"{aws_text[-1]}]"
 
-        entries = self.add_columns(receipt_list, columns, select_options)
+        # getting entries
+        entries = self.assemble_columns(receipt_list, columns, select_options)
 
-        # print(f"Entries before filtering: {entries}")
+        # filtering entries
         print("\n3. Filtering pages to get the best results...")
 
         filtration_time_start = time.time()
         filtered_entries = self.filter_content(entries, columns)
         filtration_time_end = time.time()
 
-        # print(f"Entries after filtering: {filtered_entries}")
         print(f"\n=> Time elapsed for filtration: {filtration_time_end - filtration_time_start} seconds")
 
         return filtered_entries
 
     def get_gpt_response(self, prompt, as_json=True):
+        """Gets GPT response for a prompt
+
+        :param prompt: GPT prompt
+        :type prompt: str
+        :param as_json: whether or not to convert GPT response to JSON, defaults to True
+        :type as_json: bool, optional
+
+        :return: GPT response
+        :rtype: either JSON dictionary or str
+        """
+
+        # add prefix in front of prompt to specify config
         prompt = "Limit your response to under 80 tokens for times' sake AND 15 sceonds response time. " + prompt
+
+        gpt_response = openai_client.chat.completions.create(
+            messages = [
+                {
+                    "role": "user",
+                    "content": prompt,
+                }
+            ],
+            model = "gpt-3.5-turbo",
+            temperature = 0.0
+        )
+
+        # accessing GPT's actual reply
+        message = gpt_response.choices[0].message
+
         if as_json:
-            gpt_response = openai_client.chat.completions.create(
-                messages = [
-                    {
-                        "role": "user",
-                        "content": prompt,
-                    }
-                ],
-                model = "gpt-3.5-turbo",
-                temperature = 0.0
-            )
-
-            message = gpt_response.choices[0].message
-            # print(message)
-            # print(f"GPT-3.5 response: {message}")
-
+            # converting the message to JSON to return
             try:
-                # details = json.loads(message)
                 details = json.loads(message.content)
             except json.decoder.JSONDecodeError as e:
                 details = {'Error': e}
             
             return details
         else:
-            gpt_response = openai_client.chat.completions.create(
-                messages=[
-                    {
-                        "role": "user",
-                        "content": prompt,
-                    }
-                ],
-                model="gpt-3.5-turbo",
-                temperature = 0.0
-            )
-
-            message = gpt_response.choices[0].message
-            # print(message)
-            
+            # returning string content directly
             return message.content
 
-    def add_columns(self, receipt_list, columns, select_options):
+    def assemble_columns(self, receipt_list, columns, select_options):
+        """Assembles both selection and non-selection columns
+
+        :param receipt_list: extracted text from image of receipt
+        :type receipt_list: list of str
+        :param columns: 
+        :type columns: _type_
+        :param select_options: options for selection columns
+        :type select_options: dictionary where str (column name) -> lists (options)
+
+        :return: 
+        :rtype: 
+        """
 
         def get_target_column(target):
             for item in columns:
@@ -139,35 +151,33 @@ class ReceiptParser:
 
         print("\n1. Working on extracting page features for non-selection columns...")
 
-        # passing prompt to GPT-3.5 and gettings its response
+        # add non-select-columns while a valid response is not received
         non_select_time_start = time.time()
 
         valid_gpt_response = False
-        
         while not valid_gpt_response:
             entries = self.__add_non_select_columns(receipt_list, columns)
             if 'Error' not in entries:
                 valid_gpt_response = True
         
         non_select_time_end = time.time()
-
         print(f"\n=> Time elapsed for non-selection columns: {non_select_time_end - non_select_time_start} seconds")
-                
+
         print("\n2. Working on extracting page features for selection columns...")
 
+        # add select-columns while a valid response is not received
         select_time_start = time.time()
         select_column_names = list(select_options.keys())
         
+        # add all selection columns to the entries column one-by-one
         for column_name in list(select_column_names):
             target = get_target_column(column_name)
-        
             if target['type'] == 'select':
                 self.__add_select_column(entries, column_name, 'select', select_options[column_name])
             else:
                 self.__add_select_column(entries, column_name, 'multi_select', select_options[column_name])
         
         select_time_end = time.time()
-
         print(f"\n=> Time elapsed for selection columns: {select_time_end - select_time_start} seconds")
 
         return entries
@@ -187,21 +197,14 @@ class ReceiptParser:
 
         prompt += column_details
 
-        gpt_response_time_start = time.time()
-        # print("initiated GPT-3.5 request")
         response = self.get_gpt_response(prompt)
-        # print("received GPT-3.5 response")
-
         # print(response)
-
-        gpt_response_time_end = time.time()
-        # print(f"\n=> Time elapsed for GPT-3.5 response (non-selection): {gpt_response_time_end - gpt_response_time_start} seconds")
 
         return response
 
     def __add_select_column(self, entries, column_name, column_type, options):
         if column_type not in ['select', 'multi_select']:
-            raise ReceiptParserError(f"Invalid column type {column_type} passed as selection column", include_name=False)
+            raise ReceiptParserError(error_msg=f"Invalid column type {column_type} passed as selection column")
 
         if column_type == 'select':
             prompt = "We are working with a Notion database that has a column of type 'Select'. The goal is to select upto one (you can choose zero) of the following options based on whether you believe they are related to the specific purchase entry or not. Do not create your own options, only choose from the ones provided. Respond WITH ONLY a SINGLE WORD, i.e. the option you choose. Please don't say anything else. Your options are: "
@@ -209,28 +212,29 @@ class ReceiptParser:
             prompt = "We are working with a Notion database that has a column of type 'Multi-select'. The goal is to select multiple of the following options (return your selection as a list) based on whether you believe they are related to the specific purchase entry or not. Do not create your own options, only choose from the ones provided. Respond with a PYTHON LIST OF WORDS, i.e. the options you choose. Remember to put quotation marks around the words in that list to ensure it is syntatically correct Python. Please don't say anything else. Your options are: "
 
         if len(options) == 0:
-            return ReceiptParserError(f"No options provided for column {column_name}", include_name=False)
+            return ReceiptParserError(error_msg=f"No options provided for column {column_name}")
 
         criteria = ''.join([f'{option}, ' for option in options][:-1]) + options[-1]
         prompt += criteria
 
-        mod_entries = []
+        modified_entries = []
+
         for entry in entries:
             curr_prompt = prompt + f"\n And the current entry in question is: {entry}"
             curr_gpt_response = self.get_gpt_response(curr_prompt, as_json=False)
-            unmodified_entry = entry
+            curr_entry = entry
 
             if column_type == 'select':
-                unmodified_entry[column_name] = curr_gpt_response
+                curr_entry[column_name] = curr_gpt_response
             else:
                 try:
-                    unmodified_entry[column_name] = ast.literal_eval(curr_gpt_response)
+                    curr_entry[column_name] = ast.literal_eval(curr_gpt_response)
                 except Exception:
-                    print(f"Error: {curr_gpt_response}")
-                    raise ReceiptParserError(f"Unable to parse GPT response {curr_gpt_response} as a list", include_name=False)
-            mod_entries.append(unmodified_entry)
+                    continue
 
-        return mod_entries
+            modified_entries.append(curr_entry)
+
+        return modified_entries
 
     def filter_content(self, entries, columns):
         filtered_entries = self.__filter_select_cols(entries, columns)
@@ -271,7 +275,7 @@ class ReceiptParser:
             if column['type'] in ['title', 'text']:
                 textual_columns.append(column['name'])
             
-        text_filtered_response = []
+        modified_entries = []
         for entry in entries:
             keep_entry = True
             for column_name in textual_columns:
@@ -280,9 +284,9 @@ class ReceiptParser:
                 if contains_unwanted_content(entry[column_name]):
                     keep_entry = False
             if keep_entry:
-                text_filtered_response.append(entry)
+                modified_entries.append(entry)
 
-        return text_filtered_response
+        return modified_entries
 
     def __filter_select_cols(self, entries, columns):
         non_select_columns = []
@@ -291,24 +295,24 @@ class ReceiptParser:
                 non_select_columns.append(column['name'])
  
         # change this filtering to check for non-text content
-        filtered_entries = []
-        for purchase in entries:
+        modified_entries = []
+        for entry in entries:
             num_empty = 0
             for column in non_select_columns:
-                if purchase[column] == '':
+                if entry[column] == '':
                     num_empty += 1
             if num_empty <= int(len(columns)/2):
-                filtered_entries.append(purchase)
+                modified_entries.append(entry)
         
-        return filtered_entries
+        return modified_entries
 
     def parse(self, filepath, columns, select_options = None):
         rekognition_response = self.get_rekognition_response(filepath)
         if 'Error' in rekognition_response:
-            raise ReceiptParserError("invalid AWS response", include_name=False)
+            raise ReceiptParserError(error_msg="invalid AWS response")
 
         parsed_response = self.parse_rekognition_response(rekognition_response, columns, select_options)
         if 'Error' in parsed_response:
-            raise ReceiptParserError("invalid GPT response", include_name=False)
+            raise ReceiptParserError(error_msg="invalid GPT response")
 
         return parsed_response

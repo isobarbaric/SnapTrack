@@ -2,15 +2,16 @@ from datetime import datetime
 from notion_client import Client
 
 class NotionDBError(Exception):
-    def __init__(self, exception, include_name=True):
-        exception_str = str(exception)
-        if include_name:
-            self.message = f"{type(exception).__name__}: {exception_str}"
-        else:
-            self.message = exception_str
+    """Error class for the NotionDB class
+    """
+
+    def __init__(self, error_msg):
+        self.message = error_msg
         super().__init__(self.message)
 
 class NotionDB:
+    """Notion database manager
+    """
 
     def __init__(self, notion_token, database_id):
         self.notion = Client(auth = notion_token)
@@ -32,11 +33,9 @@ class NotionDB:
         self.columns = self.get_columns()
 
     def get_columns(self):
-        # doesn't support checkbox, relation, rollup, formula, file
-        # these are not relevant for finance tracking, so should be fine
-
-        columns = []        
+        # doesn't support checkbox, relation, rollup, formula, file (not relevant for finance tracking)
         properties = self.structure['properties']
+        columns = []        
 
         for key in properties:
             column_name = properties[key]['name'].title()
@@ -53,7 +52,6 @@ class NotionDB:
         return columns
 
     def add_row(self, row_content):
-        # build properties dictionary
         properties = {}
 
         for column in self.columns:
@@ -79,7 +77,6 @@ class NotionDB:
                 properties[column_name] = {'rich_text': [{'text': {'content': str(value)}}]}
             elif column_type == 'number':
                 number = str(value)
-
                 if number != '':
                     unwanted_entities = [',','$','€','£','¥','A$','CA$','CHF','CN¥','kr','NZ$']
                     for entity in unwanted_entities:
@@ -88,10 +85,8 @@ class NotionDB:
                         properties[column_name] = {'number': float(number)}
                     except Exception:
                         properties[column_name] = {'number': None}
-                        # raise NotionDBError(f"Number {number} is not in the correct format", include_name=False)
                 else:
                     properties[column_name] = {'number': None}
-
             elif column_type == 'select':
                 if value == '':
                     continue
@@ -100,7 +95,6 @@ class NotionDB:
                 date = str(value)
                 if date == '':
                     continue
-
                 try:
                     if date != '' and date is not None and date != 'N/A':               
                         # extracting date from date incase time is included
@@ -108,8 +102,7 @@ class NotionDB:
                         date = datetime.strptime(date, '%Y/%m/%d')
                         date = str(date).split()[0]
                 except Exception:
-                    raise NotionDBError(f"Date {date} is not in the correct format", include_name=False)
-
+                    continue
                 properties[column_name] = {'date': {'start': date, 'end': None}}
             elif column_type == 'url':
                 properties[column_name] = {'url': str(value)}
@@ -120,9 +113,8 @@ class NotionDB:
             elif column_type == 'multi_select':
                 try:
                     assert isinstance(value, list)
-                except AssertionError:
-                    raise NotionDBError(f"Value for multi_select column {column_name} must be a list", include_name=False)                
-
+                except AssertionError as ex:
+                    raise NotionDBError(error_msg=f"Value for multi_select column {column_name} must be a list (GPT)") from ex     
                 properties[column_name] = {'multi_select': [{'name': single_value} for single_value in value if single_value != '']}
 
         try:
@@ -130,8 +122,8 @@ class NotionDB:
                 parent = {'database_id': self.database_id},
                 properties = properties
             )
-        except Exception as e:
-            raise NotionDBError("Unable to add row to database", include_name=False)
+        except Exception as ex:
+            raise NotionDBError(error_msg="Unable to add row to database") from ex
 
     def print(self):
         database_row = []

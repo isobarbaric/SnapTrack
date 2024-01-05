@@ -9,6 +9,9 @@ load_dotenv()
 notion_token = os.environ["NOTION_TOKEN"]
 database_id = os.environ["NOTION_DATABASE_ID"]
 
+def setup():
+    pass
+
 def main():
     start = time.time()
 
@@ -24,8 +27,6 @@ def main():
         if attempt_number == 5:
             raise Exception("Unable to parse receipt")
         
-        # print(f"Attempt Number #{attempt_number}")
-
         products = receipt_parser.parse(
             filepath = "../../data/receipts/receipt3.jpg", 
             columns = database.columns, 
@@ -36,8 +37,6 @@ def main():
             products_valid = True
 
         attempt_number += 1
-
-        # print(f"\nEntries obtained: {products}\n")
         time.sleep(1)
 
     print("\n=========\nProducts:\n=========")
