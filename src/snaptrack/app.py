@@ -12,21 +12,38 @@ database_id = os.environ["NOTION_DATABASE_ID"]
 def main():
     start = time.time()
 
-    db = NotionDB(notion_token, database_id)
     receipt_parser = ReceiptParser()
-    # print(db.columns)
-    # print(db.select_options)
+    database = NotionDB(notion_token, database_id)
+    print(database.columns)
 
-    products = receipt_parser.parse(filepath = "../../data/receipts/receipt4.jpg", 
-                                    columns = db.columns, 
-                                    select_options = db.select_options)
-    # print(products)
+    # batch work??
+    products_valid = False
+    products = None
 
-    # select_fields = db.select_options.keys()
-    # print(select_fields)
+    attempt_number = 1
+    while not products_valid:
+        if attempt_number == 5:
+            raise Exception("Unable to parse receipt")
+        
+        print(f"Attempt Number #{attempt_number}")
+
+        products = receipt_parser.parse(
+            filepath = "../../data/receipts/receipt3.jpg", 
+            columns = database.columns, 
+            select_options = database.select_options
+        )
+
+        if len(products) != 0:
+            products_valid = True
+
+        attempt_number += 1
+
+        print(f"Entries obtained: {products}\n")
+        time.sleep(1)
+
     for product in products:
         print(product)
-        db.add_row(product)
+        database.add_row(product)
 
     end = time.time()
     print(f'\n{end - start} seconds elapsed')

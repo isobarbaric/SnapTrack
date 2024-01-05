@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from notion_client import Client
 
 class NotionDBError(Exception):
@@ -52,8 +52,6 @@ class NotionDB:
         return columns
 
     def add_row(self, row_content):
-        # print(f"Row: {row_content}")
-
         # build properties dictionary
         properties = {}
 
@@ -65,22 +63,22 @@ class NotionDB:
             if column_name not in row_content:
                 row_content[column_name] = ''
 
-            # print(column_type)
             # getting value from row_content, and getting the right capitalization
             if column_type == 'multi_select':
                 value = row_content[column_name]
             else:
                 value = str(row_content[column_name]).title()
-            # print(f'{column_name}: {value}\n')
 
             # building properties dictionary for different types required different formatting
-            # remove str
             if column_type == 'title':
                 properties[column_name] = {'title': [{'text': {'content': str(value)}}]}
             elif column_type == 'text':
                 properties[column_name] = {'text': {'content': str(value)}}
+            elif column_type == 'rich_text':
+                properties[column_name] = {'rich_text': [{'text': {'content': str(value)}}]}
             elif column_type == 'number':
                 number = str(value)
+
                 if number != '':
                     unwanted_entities = [',','$','€','£','¥','A$','CA$','CHF','CN¥','kr','NZ$']
                     for entity in unwanted_entities:
@@ -92,15 +90,13 @@ class NotionDB:
                         # raise NotionDBError(f"Number {number} is not in the correct format", include_name=False)
                 else:
                     properties[column_name] = {'number': None}
+
             elif column_type == 'select':
                 if value == '':
                     continue
-
-                # not working
                 properties[column_name] = {'select': {'name': str(value)}}
             elif column_type == 'date':
                 date = str(value)
-                # print("Date: ", date)
                 if date == '':
                     continue
 
@@ -122,14 +118,11 @@ class NotionDB:
                 properties[column_name] = {'phone_number': str(value)}
             elif column_type == 'multi_select':
                 try:
-                    # print(value, type(value))
                     assert isinstance(value, list)
                 except AssertionError:
-                    raise NotionDBError(f"Value for multi_select column {column_name} must be a list", include_name=False)
-                
-                properties[column_name] = {'multi_select': [{'name': single_value} for single_value in value if single_value != '']}
+                    raise NotionDBError(f"Value for multi_select column {column_name} must be a list", include_name=False)                
 
-        # print(properties)
+                properties[column_name] = {'multi_select': [{'name': single_value} for single_value in value if single_value != '']}
 
         try:
             self.notion.pages.create(
