@@ -1,12 +1,12 @@
+import os
+import re
 import ast
+import json
 import boto3
+import time
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
-import json
 from openai import OpenAI
-import os
-import time
-import re
 
 # loading api key
 load_dotenv()
@@ -77,27 +77,43 @@ class ReceiptParser:
             receipt_list += f"{item}, "
         receipt_list += f"{aws_text[-1]}]"
         
+        print("\n1. Working on extracting page features for non-selection columns...")
+
         # passing prompt to GPT-3.5 and gettings its response
+        non_select_time_start = time.time()
         valid_gpt_response = False
         while not valid_gpt_response:
             purchases = self.process_non_select_cols(receipt_list, columns)
             if 'Error' not in purchases:
                 valid_gpt_response = True
+            print(f"Entries obtained via GPT: {purchases}\n")
+        non_select_time_end = time.time()
+        print(f"\n=> Time elapsed for non-selection columns: {non_select_time_end - non_select_time_start} seconds")
                 
-        lens = [len(purchases)]
+        total_purchase_history = [len(purchases)]
 
+        print("\n2. Working on extracting page features for selection columns...")
+
+        select_time_start = time.time()
         select_column_names = list(select_options.keys())
         for column_name in list(select_column_names):
             target = get_target_column(column_name, columns)
+            print(f'...current column: {column_name}')
             if target['type'] == 'select':
                 self.get_select_col(purchases, column_name, 'select', select_options[column_name])
             else:
                 self.get_select_col(purchases, column_name, 'multi_select', select_options[column_name])
+        select_time_end = time.time()
+        print(f"\n=> Time elapsed for selection columns: {select_time_end - select_time_start} seconds")
 
-        lens.append(len(purchases))
+        total_purchase_history.append(len(purchases))
+
+        print(f"Purchases before filtering: {purchases}")
+        print("\n3. Filtering pages to get the best results...")
+
+        filtration_time_start = time.time()
 
         # TODO: clean up this function, consolidate with filter_non_select_cols
-        # TODO: apply half filled to non-select content (not just textual, date, amount)
         non_select_columns = []
         for column in columns:
             if not column['type'] in ['select', 'multi_select']:
@@ -109,28 +125,31 @@ class ReceiptParser:
         filtered_purchases = []
         for purchase in purchases:
             num_empty = 0
-            # for _, value in purchase.items():
             for column in non_select_columns:
                 if purchase[column] == '':
                     num_empty += 1
             if num_empty <= int(len(columns)/2):
                 filtered_purchases.append(purchase)
 
-        lens.append(len(purchases))
-
-        # change to filtered_purchases
+        total_purchase_history.append(len(filtered_purchases))
         filtered_purchases = self.filter_non_select_cols(filtered_purchases, columns)
+        total_purchase_history.append(len(filtered_purchases))
 
-        lens.append(len(purchases))
+        print(f"Purchases after filtering: {filtered_purchases}")
+
+        filtration_time_end = time.time()
+        print(f"\n=> Time elapsed for filtration: {filtration_time_end - filtration_time_start} seconds")
 
         # check if lens is non-increasing
-        # print(f'lengths of purchases: {lens}')
-        if lens != sorted(lens, reverse=True):
+        if total_purchase_history != sorted(total_purchase_history, reverse=True):
             raise ReceiptParserError(f"Purchase", include_name=False)
 
         return filtered_purchases
 
     def get_gpt_response(self, prompt, as_json=True):
+        # prompt = "Limit your response to under 100 tokens for times' sake AND 15 seconds response time. " + prompt
+        prompt = "Limit your response to under 80 tokens for times' sake AND 15 sceonds response time. " + prompt
+        # prompt = "Respond within 17 seconds. " + prompt
         if as_json:
             gpt_response = openai_client.chat.completions.create(
                 messages = [
@@ -139,11 +158,14 @@ class ReceiptParser:
                         "content": prompt,
                     }
                 ],
-                model = "gpt-3.5-turbo"
+                model = "gpt-3.5-turbo",
+                temperature = 0.0
             )
 
             message = gpt_response.choices[0].message
             # print(message)
+
+            print(f"GPT-3.5 response: {message}")
 
             try:
                 # details = json.loads(message)
@@ -160,7 +182,8 @@ class ReceiptParser:
                         "content": prompt,
                     }
                 ],
-                model="gpt-3.5-turbo"
+                model="gpt-3.5-turbo",
+                temperature = 0.0
             )
 
             message = gpt_response.choices[0].message
@@ -168,7 +191,6 @@ class ReceiptParser:
             
             return message.content
 
-    # add filtering here
     def process_non_select_cols(self, receipt_list, categories):
         # created a detailed prompt for task
         prompt = "There are labels that represent columns in a Notion database. Scrutinize all extracted text for each entry in the receipt and assign them to appropriate labels (don't create your own labels, only create keys for given labels). For a particular product, assign a label an empty string if you are unsure what value should be assigned, but make sure to ALWAYS include every label for a particular entry. Please include dates in %Y/%m/%d format excluding time, and correct the content in a title word format. Make sure each entry has the same date (receipt will have a single date on it somewhere). Your output should ONLY be a list of JSON objects and nothing else. Don't list payment details, vendor details as separate purchases. This list is text extracted from a paper receipt: "
@@ -184,8 +206,15 @@ class ReceiptParser:
 
         prompt += columns
 
+        gpt_response_time_start = time.time()
+        print("initiated GPT-3.5 request")
         response = self.get_gpt_response(prompt)
+        print("received GPT-3.5 response")
+
         # print(response)
+        gpt_response_time_end = time.time()
+
+        print(f"\n=> Time elapsed for GPT-3.5 response (non-selection): {gpt_response_time_end - gpt_response_time_start} seconds")
 
         return response
  
@@ -193,7 +222,7 @@ class ReceiptParser:
         def contains_unwanted_content(purchase_column):
             lower_input = purchase_column.lower()
 
-            unwanted = ['tax', 'change', 'cash', 'card', 'amount', 'total', 'subtotal', 'discount', 'hst', 'gst', 'invoice', 'purchase', 'customer', 'receipt', 'round', 'balance', '.com', '.ca', 'feedback', 'swipe', 'sale', 'pay', 'shop', '*', 'approved', 'auth']
+            unwanted = ['tax', 'change', 'cash', 'card', 'amount', 'total', 'subtotal', 'discount', 'hst', 'gst', 'invoice', 'purchase', 'customer', 'receipt', 'round', 'balance', '.com', '.ca', 'feedback', 'swipe', 'sale', 'pay', 'shop', '*', 'approved', 'auth', 'record', 'important', 'you', 'copy']
             for word in unwanted:
                 if word in lower_input:
                     return True
@@ -202,7 +231,7 @@ class ReceiptParser:
                 # date
                 r'\d{1,2}/\d{1,2}/\d{2,4}',
                 # amount
-                r'\d+(\.\d{2})?',
+                r'^\d+(\.\d{2})?$',
                 # time
                 r'\b\d{1,2}:\d{2}(?::\d{2})?\b',
                 # phone number
@@ -229,7 +258,7 @@ class ReceiptParser:
         for purchase in purchases:
             keep_purchase = True
             for column_name in textual_columns:
-                if len(purchase[column_name]) <= 2:
+                if len(purchase[column_name]) != 0 and len(purchase[column_name]) <= 2:
                     keep_purchase = False
                 if contains_unwanted_content(purchase[column_name]):
                     keep_purchase = False
