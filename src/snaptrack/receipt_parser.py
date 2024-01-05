@@ -6,6 +6,7 @@ import json
 from openai import OpenAI
 import os
 import time
+import re
 
 # loading api key
 load_dotenv()
@@ -82,19 +83,18 @@ class ReceiptParser:
             purchases = self.process_non_select_cols(receipt_list, columns)
             if 'Error' not in purchases:
                 valid_gpt_response = True
-
-        # batching purchases necessary for efficiency purposes
-        # otherwise running with selection columns in a longer list where some of the entries are not passable from the beginning
                 
-        select_column_names = list(select_options.keys())
+        lens = [len(purchases)]
 
-        # loop through individual select columns and add key to each page
+        select_column_names = list(select_options.keys())
         for column_name in list(select_column_names):
             target = get_target_column(column_name, columns)
             if target['type'] == 'select':
                 self.get_select_col(purchases, column_name, 'select', select_options[column_name])
             else:
                 self.get_select_col(purchases, column_name, 'multi_select', select_options[column_name])
+
+        lens.append(len(purchases))
 
         # TODO: clean up this function, consolidate with filter_non_select_cols
         # TODO: apply half filled to non-select content (not just textual, date, amount)
@@ -103,6 +103,8 @@ class ReceiptParser:
             if not column['type'] in ['select', 'multi_select']:
                 non_select_columns.append(column['name'])
  
+        # print(f'non_select_columns: {non_select_columns}')
+
         # change this filtering to check for non-text content
         filtered_purchases = []
         for purchase in purchases:
@@ -114,21 +116,30 @@ class ReceiptParser:
             if num_empty <= int(len(columns)/2):
                 filtered_purchases.append(purchase)
 
+        lens.append(len(purchases))
+
         # change to filtered_purchases
         filtered_purchases = self.filter_non_select_cols(filtered_purchases, columns)
+
+        lens.append(len(purchases))
+
+        # check if lens is non-increasing
+        # print(f'lengths of purchases: {lens}')
+        if lens != sorted(lens, reverse=True):
+            raise ReceiptParserError(f"Purchase", include_name=False)
 
         return filtered_purchases
 
     def get_gpt_response(self, prompt, as_json=True):
         if as_json:
             gpt_response = openai_client.chat.completions.create(
-                messages=[
+                messages = [
                     {
                         "role": "user",
                         "content": prompt,
                     }
                 ],
-                model="gpt-3.5-turbo"
+                model = "gpt-3.5-turbo"
             )
 
             message = gpt_response.choices[0].message
@@ -141,7 +152,6 @@ class ReceiptParser:
                 details = {'Error': e}
             
             return details
-        
         else:
             gpt_response = openai_client.chat.completions.create(
                 messages=[
@@ -161,7 +171,7 @@ class ReceiptParser:
     # add filtering here
     def process_non_select_cols(self, receipt_list, categories):
         # created a detailed prompt for task
-        prompt = "There are labels that represent columns in a Notion database. Scrutinize all extracted text for each entry in the receipt and assign them to appropriate labels (don't create your own labels, only create keys for given labels). For a particular product, assign a label an empty string if you are unsure what value should be assigned, but make sure to ALWAYS include every label for a particular entry. Please include dates in %Y/%m/%d format excluding time, and correct the content in a title word format. Note that each entry will have the same date (receipt will have a single date on it somewhere). Your output should ONLY be a list of JSON objects and nothing else. Don't list payment details, vendor details as separate purchases. This list is text extracted from a paper receipt: "
+        prompt = "There are labels that represent columns in a Notion database. Scrutinize all extracted text for each entry in the receipt and assign them to appropriate labels (don't create your own labels, only create keys for given labels). For a particular product, assign a label an empty string if you are unsure what value should be assigned, but make sure to ALWAYS include every label for a particular entry. Please include dates in %Y/%m/%d format excluding time, and correct the content in a title word format. Make sure each entry has the same date (receipt will have a single date on it somewhere). Your output should ONLY be a list of JSON objects and nothing else. Don't list payment details, vendor details as separate purchases. This list is text extracted from a paper receipt: "
 
         # adding items on receipt to prompt
         prompt += receipt_list
@@ -180,12 +190,34 @@ class ReceiptParser:
         return response
  
     def filter_non_select_cols(self, purchases, columns):        
-        # TODO: check if anything other than text; date/amount/phone_number/url in column
-        def contains_unwanted_words(purchase_column):
+        def contains_unwanted_content(purchase_column):
             lower_input = purchase_column.lower()
-            for word in ['tax', 'change', 'cash', 'card', 'amount', 'total', 'subtotal', 'discount', 'hst', 'gst', 'invoice', 'purchase', 'customer', 'receipt', 'round', 'balance', '.com', '.ca', 'feedback', 'swipe', 'sale', '*']:
+
+            unwanted = ['tax', 'change', 'cash', 'card', 'amount', 'total', 'subtotal', 'discount', 'hst', 'gst', 'invoice', 'purchase', 'customer', 'receipt', 'round', 'balance', '.com', '.ca', 'feedback', 'swipe', 'sale', 'pay', 'shop', '*', 'approved', 'auth']
+            for word in unwanted:
                 if word in lower_input:
                     return True
+
+            unwanted_patterns = [
+                # date
+                r'\d{1,2}/\d{1,2}/\d{2,4}',
+                # amount
+                r'\d+(\.\d{2})?',
+                # time
+                r'\b\d{1,2}:\d{2}(?::\d{2})?\b',
+                # phone number
+                r'\d{10}',
+                # URL
+                r'https?://\S+',
+                # credit card
+                r'\b(?:\d[ -]*?){13,16}\b',
+                r'\b(?:\d[ -]x?){13,16}\b'
+                r'\b(?:\d[ -]X?){13,16}\b'
+            ]
+            for pattern in unwanted_patterns:
+                if re.search(pattern, purchase_column):
+                    return True
+
             return False
         
         textual_columns = []
@@ -199,8 +231,7 @@ class ReceiptParser:
             for column_name in textual_columns:
                 if len(purchase[column_name]) <= 2:
                     keep_purchase = False
-
-                if contains_unwanted_words(purchase[column_name]):
+                if contains_unwanted_content(purchase[column_name]):
                     keep_purchase = False
             if keep_purchase:
                 text_filtered_response.append(purchase)
@@ -221,23 +252,12 @@ class ReceiptParser:
 
         criteria = ''.join([f'{option}, ' for option in options][:-1]) + options[-1]
         prompt += criteria
-    
-        # iterate through all pages
-        # based on page details, ask gpt to determine which of category's options is the best fit
-        # add that key to that page
-        # return pages
 
         mod_purchases = []
-
         for purchase in purchases:
             curr_prompt = prompt + f"\n And the current entry in question is: {purchase}"
-            # print(curr_prompt)
-
             curr_gpt_response = self.get_gpt_response(curr_prompt, as_json=False)
-            # print(curr_gpt_response)
-
             unmodified_purchase = purchase
-            # print(unmodified_purchase)
 
             if column_type == 'select':
                 unmodified_purchase[column_name] = curr_gpt_response
@@ -254,20 +274,10 @@ class ReceiptParser:
     def parse(self, filepath, columns, select_options = None):
         rekognition_response = self.get_rekognition_response(filepath)
         if 'Error' in rekognition_response:
-            # raise ReceiptParserError(rekognition_response['Error'])
-            # separate issue, change description
-
-            # print(parsed_response['Error'])
             raise ReceiptParserError("invalid AWS response", include_name=False)
 
         parsed_response = self.parse_rekognition_response(rekognition_response, columns, select_options)
         if 'Error' in parsed_response:
-            # raise ReceiptParserError(parsed_response['Error'])
-            # str: Expecting value: line 1 column 1 (char 0)
-            # separate issue, change description
-
-            # print(parsed_response['Error'])
-            # "GPT unable to parse AWS response"
             raise ReceiptParserError("invalid GPT response", include_name=False)
 
         return parsed_response
