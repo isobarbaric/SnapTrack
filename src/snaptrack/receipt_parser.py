@@ -86,7 +86,7 @@ class ReceiptParser:
             purchases = self.process_non_select_cols(receipt_list, columns)
             if 'Error' not in purchases:
                 valid_gpt_response = True
-            print(f"Entries obtained via GPT: {purchases}\n")
+            # print(f"Entries obtained via GPT: {purchases}\n")
         non_select_time_end = time.time()
         print(f"\n=> Time elapsed for non-selection columns: {non_select_time_end - non_select_time_start} seconds")
                 
@@ -98,7 +98,7 @@ class ReceiptParser:
         select_column_names = list(select_options.keys())
         for column_name in list(select_column_names):
             target = get_target_column(column_name, columns)
-            print(f'...current column: {column_name}')
+            # print(f'...current column: {column_name}')
             if target['type'] == 'select':
                 self.get_select_col(purchases, column_name, 'select', select_options[column_name])
             else:
@@ -108,7 +108,7 @@ class ReceiptParser:
 
         total_purchase_history.append(len(purchases))
 
-        print(f"Purchases before filtering: {purchases}")
+        # print(f"Purchases before filtering: {purchases}")
         print("\n3. Filtering pages to get the best results...")
 
         filtration_time_start = time.time()
@@ -119,8 +119,6 @@ class ReceiptParser:
             if not column['type'] in ['select', 'multi_select']:
                 non_select_columns.append(column['name'])
  
-        # print(f'non_select_columns: {non_select_columns}')
-
         # change this filtering to check for non-text content
         filtered_purchases = []
         for purchase in purchases:
@@ -135,7 +133,7 @@ class ReceiptParser:
         filtered_purchases = self.filter_non_select_cols(filtered_purchases, columns)
         total_purchase_history.append(len(filtered_purchases))
 
-        print(f"Purchases after filtering: {filtered_purchases}")
+        # print(f"Purchases after filtering: {filtered_purchases}")
 
         filtration_time_end = time.time()
         print(f"\n=> Time elapsed for filtration: {filtration_time_end - filtration_time_start} seconds")
@@ -147,9 +145,7 @@ class ReceiptParser:
         return filtered_purchases
 
     def get_gpt_response(self, prompt, as_json=True):
-        # prompt = "Limit your response to under 100 tokens for times' sake AND 15 seconds response time. " + prompt
         prompt = "Limit your response to under 80 tokens for times' sake AND 15 sceonds response time. " + prompt
-        # prompt = "Respond within 17 seconds. " + prompt
         if as_json:
             gpt_response = openai_client.chat.completions.create(
                 messages = [
@@ -164,8 +160,7 @@ class ReceiptParser:
 
             message = gpt_response.choices[0].message
             # print(message)
-
-            print(f"GPT-3.5 response: {message}")
+            # print(f"GPT-3.5 response: {message}")
 
             try:
                 # details = json.loads(message)
@@ -207,14 +202,14 @@ class ReceiptParser:
         prompt += columns
 
         gpt_response_time_start = time.time()
-        print("initiated GPT-3.5 request")
+        # print("initiated GPT-3.5 request")
         response = self.get_gpt_response(prompt)
-        print("received GPT-3.5 response")
+        # print("received GPT-3.5 response")
 
         # print(response)
-        gpt_response_time_end = time.time()
 
-        print(f"\n=> Time elapsed for GPT-3.5 response (non-selection): {gpt_response_time_end - gpt_response_time_start} seconds")
+        gpt_response_time_end = time.time()
+        # print(f"\n=> Time elapsed for GPT-3.5 response (non-selection): {gpt_response_time_end - gpt_response_time_start} seconds")
 
         return response
  

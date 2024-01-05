@@ -14,9 +14,8 @@ def main():
 
     receipt_parser = ReceiptParser()
     database = NotionDB(notion_token, database_id)
-    print(database.columns)
+    # print(database.columns)
 
-    # batch work??
     products_valid = False
     products = None
 
@@ -25,7 +24,7 @@ def main():
         if attempt_number == 5:
             raise Exception("Unable to parse receipt")
         
-        print(f"Attempt Number #{attempt_number}")
+        # print(f"Attempt Number #{attempt_number}")
 
         products = receipt_parser.parse(
             filepath = "../../data/receipts/receipt3.jpg", 
@@ -38,15 +37,16 @@ def main():
 
         attempt_number += 1
 
-        print(f"Entries obtained: {products}\n")
+        # print(f"\nEntries obtained: {products}\n")
         time.sleep(1)
 
+    print("\n=========\nProducts:\n=========")
     for product in products:
         print(product)
         database.add_row(product)
 
     end = time.time()
-    print(f'\n{end - start} seconds elapsed')
+    print(f'\nTotal: {end - start} seconds elapsed')
 
 if __name__ == '__main__':
     main()
