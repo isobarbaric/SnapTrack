@@ -1,4 +1,6 @@
 import click
+import colorama
+from colorama import Fore
 from dotenv import load_dotenv
 import os
 from snaptrack.receipt_parser import ReceiptParser
@@ -12,18 +14,24 @@ load_dotenv()
 notion_token = os.environ["NOTION_TOKEN"]
 database_id = os.environ["NOTION_DATABASE_ID"]
 
+# if verbose, show time elapsed stuff
 @click.command()
 @click.argument('filepath', type=click.Path(exists=True), nargs=1)
-def send_receipt(filepath):
+@click.option('--verbose', '-v', is_flag=True, help='Show time elapsed for each operation')
+def send_receipt(filepath, verbose):
     """Send receipt to Notion database"""
-    with yaspin(text="Processing...", color="yellow") as spinner:
-        add_receipt(filepath)
+    spinner = yaspin(text="Processing...", color="yellow")
 
-def add_receipt(filepath: str):
+    if verbose:
+        add_receipt(filepath, spinner, verbose=True)
+    else:
+        add_receipt(filepath, spinner, verbose=False)
+
+def add_receipt(filepath: str, spinner: yaspin, verbose: bool):
     start = time.time()
     
-    receipt_parser = ReceiptParser()
-    database = NotionDB(notion_token, database_id)
+    receipt_parser = ReceiptParser(spinner, verbose)
+    database = NotionDB(notion_token, database_id, spinner)
 
     products_valid = False
     products = None
@@ -45,13 +53,20 @@ def add_receipt(filepath: str):
         attempt_number += 1
         time.sleep(1)
 
-    print("\n=========\nProducts:\n=========")
+    # print("\n=========\nProducts:\n=========")
+    spinner.text = "Adding entries to database..."
     for product in products:
-        print(product)
+        # print(product)
         database.add_row(product)
-
     end = time.time()
-    print(f'\nTotal: {end - start} seconds elapsed')
+    spinner.stop()
+
+    if verbose:
+        spinner.write(Fore.YELLOW + f"{'{:.3f}'.format(end - start)}" + Fore.RESET + " total seconds elapsed")
+    # print(f'\nTotal: {end - start} seconds elapsed')
+
+    spinner.text = ''
+    spinner.ok("🎉 Receipt details sent to database")
 
 if __name__ == '__main__':
     send_receipt()

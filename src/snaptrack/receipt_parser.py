@@ -5,8 +5,11 @@ import json
 import boto3
 import time
 from botocore.exceptions import ClientError
+import colorama
+from colorama import Fore
 from dotenv import load_dotenv
 from openai import OpenAI
+import yaspin
 
 # loading api key
 load_dotenv()
@@ -26,8 +29,9 @@ class ReceiptParser:
     """Parses receipts
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, spinner: yaspin, verbose: bool = False):
+        self.spinner = spinner
+        self.verbose = verbose
 
     def get_rekognition_response(self, filepath):
         """Gets AWS Rekognition response for a specified image
@@ -78,13 +82,16 @@ class ReceiptParser:
         entries = self.assemble_columns(receipt_list, columns, select_options)
 
         # filtering entries
-        print("\n3. Filtering pages to get the best results...")
+        self.spinner.text = "Filtering pages to get the best results..." 
+        # print("\n3. Filtering pages to get the best results...")
 
         filtration_time_start = time.time()
         filtered_entries = self.filter_content(entries, columns)
         filtration_time_end = time.time()
 
-        print(f"\n=> Time elapsed for filtration: {filtration_time_end - filtration_time_start} seconds")
+        if self.verbose:
+            self.spinner.write("🕒 Time elapsed for filtration: " + Fore.YELLOW + f"{'{:.3f}'.format(filtration_time_end - filtration_time_start)}" + Fore.RESET + " seconds")
+        # print(f"\n=> Time elapsed for filtration: {filtration_time_end - filtration_time_start} seconds")
 
         return filtered_entries
 
@@ -149,7 +156,8 @@ class ReceiptParser:
                     return item
             return -1
 
-        print("\n1. Working on extracting page features for non-selection columns...")
+        self.spinner.text = "Working on extracting page features for non-selection columns..."
+        # print("\n1. Working on extracting page features for non-selection columns...")
 
         # add non-select-columns while a valid response is not received
         non_select_time_start = time.time()
@@ -161,9 +169,12 @@ class ReceiptParser:
                 valid_gpt_response = True
         
         non_select_time_end = time.time()
-        print(f"\n=> Time elapsed for non-selection columns: {non_select_time_end - non_select_time_start} seconds")
+        # print(f"\n=> Time elapsed for non-selection columns: {non_select_time_end - non_select_time_start} seconds")
+        if self.verbose:
+            self.spinner.write("🕒 Time elapsed for non-selection columns: " + Fore.YELLOW + f"{'{:.3f}'.format(non_select_time_end - non_select_time_start)}" + Fore.RESET + " seconds")
 
-        print("\n2. Working on extracting page features for selection columns...")
+        self.spinner.text = "Working on extracting page features for selection columns..."
+        # print("\n2. Working on extracting page features for selection columns...")
 
         # add select-columns while a valid response is not received
         select_time_start = time.time()
@@ -178,7 +189,9 @@ class ReceiptParser:
                 self.__add_select_column(entries, column_name, 'multi_select', select_options[column_name])
         
         select_time_end = time.time()
-        print(f"\n=> Time elapsed for selection columns: {select_time_end - select_time_start} seconds")
+        # print(f"\n=> Time elapsed for selection columns: {select_time_end - select_time_start} seconds")
+        if self.verbose:
+            self.spinner.write("🕒 Time elapsed for selection columns: " + Fore.YELLOW + f"{'{:.3f}'.format(select_time_end - select_time_start)}" + Fore.RESET + " seconds")
 
         return entries
 
@@ -204,6 +217,7 @@ class ReceiptParser:
 
     def __add_select_column(self, entries, column_name, column_type, options):
         if column_type not in ['select', 'multi_select']:
+            self.spinner.fail(Fore.RED + "❌ invalid arguments passed to helper function" + Fore.RESET)
             raise ReceiptParserError(error_msg=f"Invalid column type {column_type} passed as selection column")
 
         if column_type == 'select':
@@ -212,6 +226,7 @@ class ReceiptParser:
             prompt = "We are working with a Notion database that has a column of type 'Multi-select'. The goal is to select multiple of the following options (return your selection as a list) based on whether you believe they are related to the specific purchase entry or not. Do not create your own options, only choose from the ones provided. Respond with a PYTHON LIST OF WORDS, i.e. the options you choose. Remember to put quotation marks around the words in that list to ensure it is syntatically correct Python. Please don't say anything else. Your options are: "
 
         if len(options) == 0:
+            self.spinner.fail(Fore.RED + "❌ no options available for selection column" + Fore.RESET)
             return ReceiptParserError(error_msg=f"No options provided for column {column_name}")
 
         criteria = ''.join([f'{option}, ' for option in options][:-1]) + options[-1]
@@ -307,12 +322,16 @@ class ReceiptParser:
         return modified_entries
 
     def parse(self, filepath, columns, select_options = None):
+        self.spinner.start()
+
         rekognition_response = self.get_rekognition_response(filepath)
         if 'Error' in rekognition_response:
+            self.spinner.fail(Fore.RED + "❌ invalid AWS response" + Fore.RESET)
             raise ReceiptParserError(error_msg="invalid AWS response")
 
         parsed_response = self.parse_rekognition_response(rekognition_response, columns, select_options)
         if 'Error' in parsed_response:
+            self.spinner.fail(Fore.RED + "❌ invalid GPT response" + Fore.RESET)
             raise ReceiptParserError(error_msg="invalid GPT response")
 
         return parsed_response

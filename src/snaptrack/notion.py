@@ -13,9 +13,10 @@ class NotionDB:
     """Notion database manager
     """
 
-    def __init__(self, notion_token, database_id):
+    def __init__(self, notion_token, database_id, spinner):
         self.notion = Client(auth = notion_token)
         self.database_id = database_id
+        self.spinner = spinner
 
         # structure of database
         self.structure = self.notion.databases.retrieve(self.database_id)
@@ -24,7 +25,12 @@ class NotionDB:
         # TODO: get column headers using retrieve
         # column headers by name
         self.pages = self.notion.databases.query(self.database_id)
-        self._columns = list(self.pages['results'][0]['properties'].keys())
+
+        try:
+            self._columns = list(self.pages['results'][0]['properties'].keys())
+        except Exception:
+            self.spinner.fail("❌ no existing entries in database")
+            raise NotionDBError(error_msg="There are no existing entries in database, unable to get column headers")
 
         # saving options for the columns that are select or multi-select
         self.select_options = {}
@@ -123,6 +129,7 @@ class NotionDB:
                 properties = properties
             )
         except Exception as ex:
+            self.spinner.fail("❌ unable to add row(s) to database")
             raise NotionDBError(error_msg="Unable to add row to database") from ex
 
     def print(self):
