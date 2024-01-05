@@ -83,15 +83,13 @@ class ReceiptParser:
 
         # filtering entries
         self.spinner.text = "Filtering pages to get the best results..." 
-        # print("\n3. Filtering pages to get the best results...")
 
         filtration_time_start = time.time()
         filtered_entries = self.filter_content(entries, columns)
         filtration_time_end = time.time()
 
         if self.verbose:
-            self.spinner.write("🕒 Time elapsed for filtration: " + Fore.YELLOW + f"{'{:.3f}'.format(filtration_time_end - filtration_time_start)}" + Fore.RESET + " seconds")
-        # print(f"\n=> Time elapsed for filtration: {filtration_time_end - filtration_time_start} seconds")
+            self.spinner.write(Fore.YELLOW + "[Time elapsed for filtration: " f"{'{:.3f}'.format(filtration_time_end - filtration_time_start)}" + " seconds]" + Fore.RESET)
 
         return filtered_entries
 
@@ -157,7 +155,6 @@ class ReceiptParser:
             return -1
 
         self.spinner.text = "Working on extracting page features for non-selection columns..."
-        # print("\n1. Working on extracting page features for non-selection columns...")
 
         # add non-select-columns while a valid response is not received
         non_select_time_start = time.time()
@@ -169,12 +166,10 @@ class ReceiptParser:
                 valid_gpt_response = True
         
         non_select_time_end = time.time()
-        # print(f"\n=> Time elapsed for non-selection columns: {non_select_time_end - non_select_time_start} seconds")
         if self.verbose:
-            self.spinner.write("🕒 Time elapsed for non-selection columns: " + Fore.YELLOW + f"{'{:.3f}'.format(non_select_time_end - non_select_time_start)}" + Fore.RESET + " seconds")
+            self.spinner.write(Fore.YELLOW + "[Time elapsed for non-selection columns: " + f"{'{:.3f}'.format(non_select_time_end - non_select_time_start)}" + " seconds]" + Fore.RESET)
 
         self.spinner.text = "Working on extracting page features for selection columns..."
-        # print("\n2. Working on extracting page features for selection columns...")
 
         # add select-columns while a valid response is not received
         select_time_start = time.time()
@@ -189,9 +184,8 @@ class ReceiptParser:
                 self.__add_select_column(entries, column_name, 'multi_select', select_options[column_name])
         
         select_time_end = time.time()
-        # print(f"\n=> Time elapsed for selection columns: {select_time_end - select_time_start} seconds")
         if self.verbose:
-            self.spinner.write("🕒 Time elapsed for selection columns: " + Fore.YELLOW + f"{'{:.3f}'.format(select_time_end - select_time_start)}" + Fore.RESET + " seconds")
+            self.spinner.write(Fore.YELLOW + "[Time elapsed for selection columns: " + f"{'{:.3f}'.format(select_time_end - select_time_start)}" + " seconds]" + Fore.RESET)
 
         return entries
 

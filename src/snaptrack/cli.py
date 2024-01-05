@@ -62,11 +62,11 @@ def add_receipt(filepath: str, spinner: yaspin, verbose: bool):
     spinner.stop()
 
     if verbose:
-        spinner.write(Fore.YELLOW + f"{'{:.3f}'.format(end - start)}" + Fore.RESET + " total seconds elapsed")
+        spinner.write(Fore.BLUE + f"[Total time elapsed: {'{:.3f}'.format(end - start)}" + " seconds]" + Fore.RESET)
     # print(f'\nTotal: {end - start} seconds elapsed')
 
     spinner.text = ''
-    spinner.ok("🎉 Receipt details sent to database")
+    spinner.ok(Fore.GREEN + "🎉 Receipt details sent to database" + Fore.RESET)
 
 if __name__ == '__main__':
     send_receipt()
