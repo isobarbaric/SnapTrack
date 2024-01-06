@@ -2,6 +2,7 @@ import click
 import colorama
 from colorama import Fore
 from dotenv import load_dotenv
+import keyring
 import os
 import json
 from snaptrack.receipt_parser import ReceiptParser
@@ -9,31 +10,22 @@ from snaptrack.notion import NotionDB
 import time
 from yaspin import yaspin
 
-CONFIG_FILE = 'config.json'
-
 # load environment variables
 load_dotenv()
-
-# TODO: create pydantic model for config
 
 notion_token = os.environ["NOTION_TOKEN"]
 database_id = os.environ["NOTION_DATABASE_ID"]
 
-# config functions
+def load_credentials():
+    # getting user's input to set credentials
+    openai_api_key = click.prompt("Enter your OpenAI API key", hide_input=True)
+    notion_token = click.prompt("Enter your Notion API token", hide_input=True)
+    database_id = click.prompt("Enter the specific Notion database ID", hide_input=True)
 
-def get_config():
-    config = {
-        'OPENAI_API_KEY': click.prompt("Enter your OpenAI API key", hide_input=True),
-        'NOTION_TOKEN': click.prompt("Enter your Notion API token", hide_input=True),
-        'NOTION_DATABASE_ID': click.prompt("Enter your Notion Database ID", hide_input=True)
-    }
-    with open(CONFIG_FILE, 'w') as file:
-        json.dump(config, file, indent=4)
-
-def load_config():
-    with open(CONFIG_FILE, 'r') as file:
-        return json.load(file)
-
+    # adding passwords to keyring
+    keyring.set_password("snaptrack", "openai_api_key", openai_api_key)
+    keyring.set_password("snaptrack", "notion_token", notion_token)
+    keyring.set_password("snaptrack", "database_id", database_id)
 
 @click.command()
 @click.argument('filepath', type=click.Path(exists=True), nargs=1)
@@ -42,11 +34,11 @@ def send_receipt(filepath, verbose):
     """Send receipt to Notion database"""
     spinner = yaspin(text="Processing...", color="yellow")
 
-    # if config file doesn't exist, create one
-    if not os.path.exists(CONFIG_FILE):
+    # if details don't exist already, prompt user to set them
+    if keyring.get_password("snaptrack", "openai_api_key") is None:
         spinner.write("Thank you for using SnapTrack. First time setup detected. To get started, please enter your OpenAI API token, Notion API token and specific Notion database ID.")
-        get_config()
-
+        load_credentials()
+    
     if verbose:
         add_receipt(filepath, spinner, verbose=True)
     else:
@@ -55,11 +47,13 @@ def send_receipt(filepath, verbose):
 def add_receipt(filepath: str, spinner: yaspin, verbose: bool):
     start = time.time()
 
-    # load configuration details
-    config = load_config()
+    # loading credentials from keyring    
+    openai_api_key = keyring.get_password("snaptrack", "openai_api_key")
+    notion_token = keyring.get_password("snaptrack", "notion_token")
+    database_id = keyring.get_password("snaptrack", "database_id")
 
-    receipt_parser = ReceiptParser(config['OPENAI_API_KEY'], spinner, verbose)
-    database = NotionDB(config['NOTION_TOKEN'], config['NOTION_DATABASE_ID'], spinner)
+    receipt_parser = ReceiptParser(openai_api_key, spinner, verbose)
+    database = NotionDB(notion_token, database_id, spinner)
 
     products_valid = False
     products = None
