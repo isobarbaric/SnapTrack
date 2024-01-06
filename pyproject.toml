@@ -5,6 +5,7 @@ description = ""
 authors = ["Krish Shah <shahkrish2016@gmail.com>"]
 license = "MIT"
 readme = "README.md"
+packages = [{include = "snaptrack", from = "src"}]
 
 [tool.poetry.dependencies]
 python = "^3.9"
@@ -17,6 +18,8 @@ click = "^8.1.7"
 yaspin = "^3.0.1"
 keyring = "^24.3.0"
 
+[tool.poetry.scripts]
+snaptrack = "snaptrack.cli:send_receipt"
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.28.0"

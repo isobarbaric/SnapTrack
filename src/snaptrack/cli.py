@@ -1,10 +1,8 @@
 import click
-import colorama
 from colorama import Fore
 from dotenv import load_dotenv
 import keyring
 import os
-import json
 from snaptrack.receipt_parser import ReceiptParser
 from snaptrack.notion import NotionDB
 import time
@@ -26,6 +24,8 @@ def load_credentials():
     keyring.set_password("snaptrack", "openai_api_key", openai_api_key)
     keyring.set_password("snaptrack", "notion_token", notion_token)
     keyring.set_password("snaptrack", "database_id", database_id)
+
+# TODO: add option to reset credentials to new details
 
 @click.command()
 @click.argument('filepath', type=click.Path(exists=True), nargs=1)
