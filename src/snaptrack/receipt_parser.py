@@ -14,9 +14,6 @@ import yaspin
 # loading api key
 load_dotenv()
 
-# initializing OpenAI client
-openai_client = OpenAI(api_key = os.environ["OPENAI_API_KEY"])
-
 class ReceiptParserError(Exception):
     """Error class for the ReceiptParser class
     """
@@ -29,7 +26,10 @@ class ReceiptParser:
     """Parses receipts
     """
 
-    def __init__(self, spinner: yaspin, verbose: bool = False):
+    def __init__(self, openai_api_key, spinner: yaspin, verbose: bool = False):
+        # initializing OpenAI client
+        self.openai_client = OpenAI(api_key = openai_api_key)
+
         self.spinner = spinner
         self.verbose = verbose
 
@@ -108,7 +108,7 @@ class ReceiptParser:
         # add prefix in front of prompt to specify config
         prompt = "Limit your response to under 80 tokens for times' sake AND 15 sceonds response time. " + prompt
 
-        gpt_response = openai_client.chat.completions.create(
+        gpt_response = self.openai_client.chat.completions.create(
             messages = [
                 {
                     "role": "user",

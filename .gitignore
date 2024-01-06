@@ -4,3 +4,4 @@ __pycache__/
 receipts/
 idea.md
 test/
+**/config.json
