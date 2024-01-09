@@ -17,10 +17,10 @@ SnapTrack is perfect for anyone looking to simplify their expense tracking with 
 3. Navigate to the cloned directory (and in the root directory):
 ``cd snaptrack``
 
-4. Build the wheel for the module.
+4. Build the wheel for the module:
 ``poetry build``
 
-5. Install the module
+5. Install the module:
 ``pip install snaptrack-0.1.0-py3-none-any.whl``
 
 Now, you can use the `snaptrack` command from your terminal.
