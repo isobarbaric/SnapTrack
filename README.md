@@ -1,11 +1,22 @@
 # SnapTrack :chart_with_upwards_trend:
-Welcome to SnapTrack: Your Smart Financial Assistant! 
+
+- [Demo](#demo)
+- [Installation](#installation)
+- [Usage](#usage)
+
+-----
 
 SnapTrack is a cutting-edge Python CLI tool that combines AWS Rekognition image detection with the intelligence of GPT-3.5. 
 
 Just snap a photo of any receipt, provide its file path, and watch as SnapTrack accurately extracts each item, automatically updating your Notion finance tracking sheet. Say goodbye to the tedious task of manual entry and hello to effortless finance management. 
 
 SnapTrack is perfect for anyone looking to simplify their expense tracking with technology. Keep your finances in check effortlessly and focus on what you love. Embrace the ease of financial tracking with SnapTrack!
+
+## Demo
+
+![Help](assets/help.png)
+
+...the rest will be added soon!
 
 ## Installation
 1. Install Poetry

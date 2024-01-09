@@ -3,6 +3,7 @@ __pycache__/
 .DS_Store
 receipts/
 dist/
+data/
 idea.md
 test/
 **/config.json
