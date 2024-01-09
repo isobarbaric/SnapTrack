@@ -1,5 +1,5 @@
-# SnapTrack
-Welcome to SnapTrack: Your Smart Financial Assistant!
+# SnapTrack :chart_with_upwards_trend:
+Welcome to SnapTrack: Your Smart Financial Assistant! 
 
 SnapTrack is a cutting-edge Python CLI tool that combines AWS Rekognition image detection with the intelligence of GPT-3.5. 
 
