@@ -1,9 +1,11 @@
 # SnapTrack
-A powerful CLI tool to help keep you on track with your finances.
+Welcome to SnapTrack: Your Smart Financial Assistant!
 
-Transform your financial tracking with SnapTrack — a sleek CLI tool that instantly digitizes receipts into a tailored Notion database. 
+SnapTrack is a cutting-edge Python CLI tool that combines AWS Rekognition image detection with the intelligence of GPT-3.5. 
 
-Snap, track, and manage your expenses with unparalleled simplicity and insight.
+Just snap a photo of any receipt, provide its file path, and watch as SnapTrack accurately extracts each item, automatically updating your Notion finance tracking sheet. Say goodbye to the tedious task of manual entry and hello to effortless finance management. 
+
+SnapTrack is perfect for anyone looking to simplify their expense tracking with technology. Keep your finances in check effortlessly and focus on what you love. Embrace the ease of financial tracking with SnapTrack!
 
 ## Installation
 1. Install Poetry
@@ -12,11 +14,14 @@ Snap, track, and manage your expenses with unparalleled simplicity and insight.
 2. Clone this repository:
 ``git clone https://github.com/isobarbaric/SnapTrack``
 
-1. Navigate to the cloned directory (and in the root directory):
+3. Navigate to the cloned directory (and in the root directory):
 ``cd snaptrack``
 
-1. Install the package using Poetry:
-``poetry install``
+4. Build the wheel for the module.
+``poetry build``
+
+5. Install the module
+``pip install snaptrack-0.1.0-py3-none-any.whl``
 
 Now, you can use the `snaptrack` command from your terminal.
 

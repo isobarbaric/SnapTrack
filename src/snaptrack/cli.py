@@ -11,9 +11,6 @@ from yaspin import yaspin
 # load environment variables
 load_dotenv()
 
-notion_token = os.environ["NOTION_TOKEN"]
-database_id = os.environ["NOTION_DATABASE_ID"]
-
 def load_credentials():
     # getting user's input to set credentials
     openai_api_key = click.prompt("Enter your OpenAI API key", hide_input=True)
