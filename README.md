@@ -6,7 +6,7 @@
 
 -----
 
-SnapTrack is a cutting-edge Python CLI tool that combines AWS Rekognition image detection with the intelligence of GPT-3.5. 
+SnapTrack is a cutting-edge Python CLI tool that combines AWS Rekognition's image processing prowess with the intelligence of GPT-3.5. 
 
 Just snap a photo of any receipt, provide its file path, and watch as SnapTrack accurately extracts each item, automatically updating your Notion finance tracking sheet. Say goodbye to the tedious task of manual entry and hello to effortless finance management. 
 
