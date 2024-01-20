@@ -42,7 +42,7 @@ git clone https://github.com/isobarbaric/SnapTrack
 
 5. Navigate to the cloned directory (and in the root directory):
 ```
-cd snaptrack
+cd SnapTrack
 ```
 
 7. Build the wheel for the module:
@@ -52,7 +52,7 @@ poetry build
 
 9. Install the module:
 ```
-pip install snaptrack-0.1.0-py3-none-any.whl
+pip install dist/snaptrack-0.1.0-py3-none-any.whl
 ```
 
 Now, you can use the `snaptrack` command from your terminal.
