@@ -31,19 +31,29 @@ Access the detailed demo [here](https://github.com/isobarbaric/SnapTrack/assets/
 
 ## Installation
 1. Install Poetry
-`pip install poetry`
+```
+pip install poetry
+```
 
-2. Clone this repository:
-``git clone https://github.com/isobarbaric/SnapTrack``
+3. Clone this repository:
+```
+git clone https://github.com/isobarbaric/SnapTrack
+```
 
-3. Navigate to the cloned directory (and in the root directory):
-``cd snaptrack``
+5. Navigate to the cloned directory (and in the root directory):
+```
+cd snaptrack
+```
 
-4. Build the wheel for the module:
-``poetry build``
+7. Build the wheel for the module:
+```
+poetry build
+```
 
-5. Install the module:
-``pip install snaptrack-0.1.0-py3-none-any.whl``
+9. Install the module:
+```
+pip install snaptrack-0.1.0-py3-none-any.whl
+```
 
 Now, you can use the `snaptrack` command from your terminal.
 
