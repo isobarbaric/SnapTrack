@@ -3,6 +3,7 @@
 - [Demo](#demo)
 - [Installation](#installation)
 - [Usage](#usage)
+- [Credots](#credits)
 
 -----
 
@@ -16,7 +17,14 @@ SnapTrack is perfect for anyone looking to simplify their expense tracking with 
 
 ![Help](assets/help.png)
 
-...the rest will be added soon!
+
+![Demo](assets/snaptrack_demo.gif)
+
+Notice how every entry - with the right price - was loaded into the database, as desired.
+
+### Using the ``--verbose`` flag
+
+![Demo w/ flag](assets/snaptrack_demo_verbose.mp4)
 
 ## Installation
 1. Install Poetry
@@ -41,3 +49,7 @@ To run SnapTrack, use:
 ``snaptrack FILEPATH``
 
 For more information, feel free to use the ``--help`` flag.
+
+## Credits
+
+- [Image from Pinterest](https://www.pinterest.ca/pin/receipt--282952789077533732/)
