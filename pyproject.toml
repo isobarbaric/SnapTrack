@@ -17,6 +17,7 @@ spacy = "^3.7.2"
 click = "^8.1.7"
 yaspin = "^3.0.1"
 keyring = "^24.3.0"
+colorama = "^0.4.6"
 
 [tool.poetry.scripts]
 snaptrack = "snaptrack.cli:send_receipt"
