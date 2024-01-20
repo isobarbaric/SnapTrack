@@ -17,7 +17,11 @@ SnapTrack is perfect for anyone looking to simplify their expense tracking with 
 
 ## Demo
 
-https://github.com/isobarbaric/SnapTrack/assets/76544615/d0f43ee2-c986-4207-a8dd-fe10cbfd049e
+Here's a random receipt from [Pinterest](#credits):
+
+<img src="assets/random-receipt.jpg" alt="receipt" style="width:400px;"/>
+
+https://github.com/isobarbaric/SnapTrack/assets/76544615/d0f43ee2-c986-4207-a8dd-fe10cbfd049e      
 
 Notice how every entry - with the right price - was loaded into the database, as desired.
 
