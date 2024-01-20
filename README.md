@@ -1,9 +1,11 @@
 # SnapTrack :chart_with_upwards_trend:
 
+![Help](assets/help.png)
+
 - [Demo](#demo)
 - [Installation](#installation)
 - [Usage](#usage)
-- [Credots](#credits)
+- [Credits](#credits)
 
 -----
 
@@ -14,8 +16,6 @@ Just snap a photo of any receipt, provide its file path, and watch as SnapTrack 
 SnapTrack is perfect for anyone looking to simplify their expense tracking with technology. Keep your finances in check effortlessly and focus on what you love. Embrace the ease of financial tracking with SnapTrack!
 
 ## Demo
-
-![Help](assets/help.png)
 
 https://github.com/isobarbaric/SnapTrack/assets/76544615/d0f43ee2-c986-4207-a8dd-fe10cbfd049e
 
@@ -50,5 +50,4 @@ To run SnapTrack, use:
 For more information, feel free to use the ``--help`` flag.
 
 ## Credits
-
 - Image from [Pinterest](https://www.pinterest.ca/pin/receipt--282952789077533732/)
