@@ -17,17 +17,17 @@ SnapTrack is perfect for anyone looking to simplify their expense tracking with 
 
 ## Demo
 
-Here's a random receipt from [Pinterest](#credits):
+Experience the application with a demonstration using a sample receipt sourced from [Pinterest](#credits).
 
-<img src="assets/random-receipt.jpg" alt="receipt" style="width:400px;"/>
+Observe how each entry, complete with accurate pricing, is seamlessly loaded into the database: 
 
-https://github.com/isobarbaric/SnapTrack/assets/76544615/d0f43ee2-c986-4207-a8dd-fe10cbfd049e      
+https://github.com/isobarbaric/SnapTrack/assets/76544615/d0f43ee2-c986-4207-a8dd-fe10cbfd049e
 
-Notice how every entry - with the right price - was loaded into the database, as desired.
+### Enhancing Visibility with the `--verbose` Flag
 
-### Using the ``--verbose`` flag
+Utilize the ``--verbose`` flag to enable a detailed and comprehensive view of the application's execution.
 
-https://github.com/isobarbaric/SnapTrack/assets/76544615/0bec78af-45e3-4fd3-869d-11bb43843e04
+Access the detailed demo [here](https://github.com/isobarbaric/SnapTrack/assets/76544615/0bec78af-45e3-4fd3-869d-11bb43843e04).
 
 ## Installation
 1. Install Poetry
