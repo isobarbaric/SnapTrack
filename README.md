@@ -35,22 +35,22 @@ Access the detailed demo [here](https://github.com/isobarbaric/SnapTrack/assets/
 pip install poetry
 ```
 
-3. Clone this repository:
+2. Clone this repository:
 ```
 git clone https://github.com/isobarbaric/SnapTrack
 ```
 
-5. Navigate to the cloned directory (and in the root directory):
+3. Navigate to the cloned directory (and in the root directory):
 ```
 cd SnapTrack
 ```
 
-7. Build the wheel for the module:
+4. Build the wheel for the module:
 ```
 poetry build
 ```
 
-9. Install the module:
+5. Install the module:
 ```
 pip install dist/snaptrack-0.1.0-py3-none-any.whl
 ```
