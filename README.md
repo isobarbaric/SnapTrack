@@ -1,33 +1,28 @@
-# SnapTrack :chart_with_upwards_trend:
+# SnapTrack
 
-- [Demo](#demo)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Credits](#credits)
+SnapTrack is a Python CLI tool that uses AWS Rekognition for image processing and GPT for intelligent text extraction.
 
------
+Snap a photo of a receipt, provide its file path, and SnapTrack will extract each item and update your Notion page automatically — no manual entry required.
 
-SnapTrack is a cutting-edge Python CLI tool that combines AWS Rekognition's image processing prowess with the intelligence of GPT-3.5. 
+It’s a simple way to streamline expense tracking and keep your finances organized, so you can focus on what matters most.
 
-Just snap a photo of any receipt, provide its file path, and watch as SnapTrack accurately extracts each item, automatically updating your Notion finance tracking sheet. Say goodbye to the tedious task of manual entry and hello to effortless finance management. 
-
-SnapTrack is perfect for anyone looking to simplify their expense tracking with technology. Keep your finances in check effortlessly and focus on what you love. Embrace the ease of financial tracking with SnapTrack!
-
-![Help](assets/help.png)
+<p align="center">
+  <img src="assets/help.png" alt="Help" width="600">
+</p>
 
 ## Demo
 
 Experience the application with a demonstration using a sample receipt sourced from [Pinterest](#credits).
 
-Observe how each entry, complete with accurate pricing, is seamlessly loaded into the database: 
+Watch as each item is automatically extracted and entered into the database.
 
 https://github.com/isobarbaric/SnapTrack/assets/76544615/d0f43ee2-c986-4207-a8dd-fe10cbfd049e
 
 ### Enhancing Visibility with the `--verbose` Flag
 
-Utilize the ``--verbose`` flag to enable a detailed and comprehensive view of the application's execution.
+Use the --verbose flag for a detailed view of the application's execution.
 
-Access the detailed demo [here](https://github.com/isobarbaric/SnapTrack/assets/76544615/0bec78af-45e3-4fd3-869d-11bb43843e04).
+Watch the full demo [here](https://github.com/isobarbaric/SnapTrack/assets/76544615/0bec78af-45e3-4fd3-869d-11bb43843e04).
 
 ## Installation
 1. Install Poetry
